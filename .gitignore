@@ -1,0 +1,27 @@
+# Build
+**/target/
+**/dist/
+**/node_modules/
+**/out/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Specific
+backend/uploads/
+*.log
+temp/
+/tmp/
+
+# Sensitive info
+.env
+*.key
+*.pem
