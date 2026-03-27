@@ -49,4 +49,7 @@ public class Registration {
 
     @TableField(exist = false)
     private LocalDateTime activityEndTime;
+
+    @TableField(exist = false)
+    private String auditByName;
 }

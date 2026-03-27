@@ -21,6 +21,7 @@ import com.campus.activity.user.dto.UserInfoDto;
 import com.campus.activity.user.entity.Role;
 import com.campus.activity.user.mapper.RoleMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -74,11 +75,44 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public List<UserInfoDto> getAllUsers() {
-        List<User> users = list();
-        return users.stream().map(user -> {
+    public List<UserInfoDto> getAllUsers(String username, Boolean sortByRole) {
+        QueryWrapper<User> qw = new QueryWrapper<>();
+        if (username != null && !username.isBlank()) {
+            qw.like("username", username);
+        }
+        List<User> users = list(qw);
+        List<UserInfoDto> dtos = users.stream().map(user -> {
             List<Role> roles = roleMapper.selectRolesByUserId(user.getId());
             return UserInfoDto.from(user, roles);
         }).collect(Collectors.toList());
+
+        if (Boolean.TRUE.equals(sortByRole)) {
+            Map<String, Integer> rolePriority = Map.of(
+                "ROLE_SUPER_ADMIN", 1,
+                "ROLE_COUNSELOR", 2,
+                "ROLE_CLUB_OWNER", 3,
+                "ROLE_STUDENT", 4
+            );
+
+            dtos.sort((a, b) -> {
+                int p1 = getMinPriority(a.getRoles(), rolePriority);
+                int p2 = getMinPriority(b.getRoles(), rolePriority);
+                if (p1 != p2) {
+                    return Integer.compare(p1, p2);
+                }
+                return a.getUsername().compareTo(b.getUsername());
+            });
+        }
+        return dtos;
+    }
+
+    private int getMinPriority(List<Role> roles, Map<String, Integer> priorityMap) {
+        if (roles == null || roles.isEmpty()) {
+            return 99;
+        }
+        return roles.stream()
+                .map(r -> priorityMap.getOrDefault(r.getRoleCode(), 99))
+                .min(Integer::compare)
+                .orElse(99);
     }
 }

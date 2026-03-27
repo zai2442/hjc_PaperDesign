@@ -15,8 +15,11 @@ import com.campus.activity.activity.mapper.ActivityMapper;
 import com.campus.activity.activity.mapper.ActivityWhitelistMapper;
 import com.campus.activity.activity.mapper.RegistrationMapper;
 import com.campus.activity.activity.service.RegistrationService;
+import com.campus.activity.user.entity.User;
+import com.campus.activity.user.mapper.UserMapper;
 import com.campus.activity.common.ApiException;
 import com.campus.activity.common.PageResponse;
+import com.campus.activity.log.service.OperationLogService;
 import com.campus.activity.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -38,11 +41,12 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
     private final RegistrationMapper registrationMapper;
     private final ActivityMapper activityMapper;
     private final ActivityWhitelistMapper whitelistMapper;
+    private final UserMapper userMapper;
     private final StringRedisTemplate stringRedisTemplate;
+    private final OperationLogService operationLogService;
 
     private static final String ROLE_SUPER_ADMIN = "ROLE_SUPER_ADMIN";
     private static final String ROLE_COUNSELOR = "ROLE_COUNSELOR";
-    private static final String ROLE_CLUB_OWNER = "ROLE_CLUB_OWNER";
 
     private boolean canManageAny() {
         return SecurityUtils.hasAuthority(ROLE_SUPER_ADMIN)
@@ -56,6 +60,9 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         }
         if (canManageAny()) {
             return;
+        }
+        if (activity == null) {
+            throw new ApiException(404, HttpStatus.NOT_FOUND, "Activity not found");
         }
         if (!activity.getCreatedBy().equals(userId)) {
             throw new ApiException(403, HttpStatus.FORBIDDEN, "Forbidden");
@@ -192,6 +199,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
             reg.setCreatedAt(now);
             reg.setUpdatedAt(now);
             registrationMapper.insert(reg);
+            operationLogService.log("REGISTER", activityId, activity.getTitle(), reg, true, null);
             return reg.getId();
         } catch (DuplicateKeyException e) {
             activityMapper.update(null, new LambdaUpdateWrapper<Activity>()
@@ -223,6 +231,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         reg.setStatus(RegistrationStatus.CANCELED.name());
         reg.setUpdatedAt(LocalDateTime.now());
         registrationMapper.updateById(reg);
+        operationLogService.log("CANCEL_REGISTRATION", reg.getActivityId(), null, reg, true, null);
 
         // 恢复库存
         activityMapper.update(null, new LambdaUpdateWrapper<Activity>()
@@ -266,6 +275,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         qw.orderByDesc(Registration::getId);
         Page<Registration> result = registrationMapper.selectPage(mpPage, qw);
         fillActivityDetails(result.getRecords());
+        fillAuditorDetails(result.getRecords());
         return PageResponse.of(p, s, result.getTotal(), result.getRecords());
     }
 
@@ -293,6 +303,32 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         }
     }
 
+    private void fillAuditorDetails(List<Registration> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Long> auditorIds = records.stream()
+                .map(Registration::getAuditBy)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        if (auditorIds.isEmpty()) {
+            return;
+        }
+        List<User> auditors = userMapper.selectBatchIds(auditorIds);
+        Map<Long, User> auditorMap = auditors.stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+        for (Registration reg : records) {
+            if (reg.getAuditBy() != null) {
+                User auditor = auditorMap.get(reg.getAuditBy());
+                if (auditor != null) {
+                    reg.setAuditByName(auditor.getNickname() != null && !auditor.getNickname().isBlank() 
+                        ? auditor.getNickname() : auditor.getUsername());
+                }
+            }
+        }
+    }
+
     @Override
     public Registration getDetail(Long id) {
         Registration reg = registrationMapper.selectById(id);
@@ -300,6 +336,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
             throw new ApiException(404, HttpStatus.NOT_FOUND, "Registration not found");
         }
         fillActivityDetails(List.of(reg));
+        fillAuditorDetails(List.of(reg));
         Long userId = SecurityUtils.getUserId();
         if (userId != null && userId.equals(reg.getUserId())) {
             return reg;
@@ -316,24 +353,61 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
 
     @Override
     public PageResponse<Registration> getAdminRegistrations(Long activityId, String status, String keyword, long page, long size) {
-        Activity activity = activityMapper.selectById(activityId);
-        if (activity == null) {
-            throw new ApiException(404, HttpStatus.NOT_FOUND, "Activity not found");
+        if (activityId != null) {
+            Activity activity = activityMapper.selectById(activityId);
+            if (activity == null) {
+                throw new ApiException(404, HttpStatus.NOT_FOUND, "Activity not found");
+            }
+            assertCanManage(activity);
         }
-        assertCanManage(activity);
 
         long p = Math.max(1, page);
         long s = Math.min(200, Math.max(1, size));
         Page<Registration> mpPage = new Page<>(p, s);
         LambdaQueryWrapper<Registration> qw = new LambdaQueryWrapper<>();
-        qw.eq(Registration::getActivityId, activityId);
+        
+        // 处理 activityId 和 keyword 过滤
+        if (activityId != null) {
+            qw.eq(Registration::getActivityId, activityId);
+        } else if (keyword != null && !keyword.isBlank()) {
+            // 根据关键词查询活动ID
+            LambdaQueryWrapper<Activity> actQw = new LambdaQueryWrapper<Activity>()
+                    .like(Activity::getTitle, keyword)
+                    .select(Activity::getId);
+            
+            // 如果不是超级管理员/辅导员，只能查询自己管理的活动
+            if (!canManageAny()) {
+                Long userId = SecurityUtils.getUserId();
+                actQw.eq(Activity::getCreatedBy, userId);
+            }
+            
+            List<Activity> matchingActivities = activityMapper.selectList(actQw);
+            if (matchingActivities.isEmpty()) {
+                return PageResponse.of(p, s, 0, List.of());
+            }
+            List<Long> ids = matchingActivities.stream().map(Activity::getId).collect(Collectors.toList());
+            qw.in(Registration::getActivityId, ids);
+        } else if (!canManageAny()) {
+            // 无关键词且不是高级权限，限制为自己管理的活动
+            Long userId = SecurityUtils.getUserId();
+            List<Activity> myActivities = activityMapper.selectList(new LambdaQueryWrapper<Activity>()
+                    .eq(Activity::getCreatedBy, userId)
+                    .select(Activity::getId));
+            if (myActivities.isEmpty()) {
+                return PageResponse.of(p, s, 0, List.of());
+            }
+            List<Long> ids = myActivities.stream().map(Activity::getId).toList();
+            qw.in(Registration::getActivityId, ids);
+        }
+
         if (status != null && !status.isBlank()) {
             qw.eq(Registration::getStatus, status);
         }
-        // 如果有keyword，通常是搜索用户名，但当前表没有用户名。为简化可忽略keyword，或连表查询
+        
         qw.orderByDesc(Registration::getId);
         Page<Registration> result = registrationMapper.selectPage(mpPage, qw);
         fillActivityDetails(result.getRecords());
+        fillAuditorDetails(result.getRecords());
         return PageResponse.of(p, s, result.getTotal(), result.getRecords());
     }
 
@@ -365,43 +439,61 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
             activityMapper.update(null, new LambdaUpdateWrapper<Activity>()
                     .eq(Activity::getId, reg.getActivityId())
                     .setSql("stock_available = stock_available + 1"));
-            stringRedisTemplate.opsForValue().increment(cacheKeyStock(reg.getActivityId()));
-
-            int limit = activity.getPerUserLimit() == null ? 0 : activity.getPerUserLimit();
-            if (limit > 0) {
-                String userKey = cacheKeyUserLimit(reg.getActivityId(), reg.getUserId());
-                String v = stringRedisTemplate.opsForValue().get(userKey);
-                if (v != null) {
-                    try {
+            try {
+                stringRedisTemplate.opsForValue().increment(cacheKeyStock(reg.getActivityId()));
+                int limit = activity.getPerUserLimit() == null ? 0 : activity.getPerUserLimit();
+                if (limit > 0) {
+                    String userKey = cacheKeyUserLimit(reg.getActivityId(), reg.getUserId());
+                    String v = stringRedisTemplate.opsForValue().get(userKey);
+                    if (v != null) {
                         long n = Long.parseLong(v);
                         if (n <= 1) {
                             stringRedisTemplate.delete(userKey);
                         } else {
                             stringRedisTemplate.opsForValue().decrement(userKey);
                         }
-                    } catch (Exception ignored) {
                     }
                 }
+            } catch (Exception e) {
+                // Redis down should not block audit
             }
         } else {
             throw new ApiException(400, HttpStatus.BAD_REQUEST, "Invalid audit status");
         }
         reg.setUpdatedAt(now);
         registrationMapper.updateById(reg);
+        operationLogService.log("AUDIT_REGISTRATION", reg.getActivityId(), activity.getTitle(), Map.of("status", request.getStatus(), "reason", request.getReason() == null ? "" : request.getReason()), true, null);
     }
 
     @Override
     public RegistrationStatsResponse getStats(Long activityId) {
-        Activity activity = activityMapper.selectById(activityId);
-        if (activity == null) {
-            throw new ApiException(404, HttpStatus.NOT_FOUND, "Activity not found");
+        if (activityId != null) {
+            Activity activity = activityMapper.selectById(activityId);
+            if (activity == null) {
+                throw new ApiException(404, HttpStatus.NOT_FOUND, "Activity not found");
+            }
+            assertCanManage(activity);
         }
-        assertCanManage(activity);
 
-        List<Map<String, Object>> stats = registrationMapper.selectMaps(new QueryWrapper<Registration>()
-                .select("status, COUNT(*) AS cnt")
-                .eq("activity_id", activityId)
-                .groupBy("status"));
+        QueryWrapper<Registration> qw = new QueryWrapper<>();
+        qw.select("status, COUNT(*) AS cnt");
+        if (activityId != null) {
+            qw.eq("activity_id", activityId);
+        } else if (!canManageAny()) {
+            Long userId = SecurityUtils.getUserId();
+            List<Activity> myActivities = activityMapper.selectList(new LambdaQueryWrapper<Activity>()
+                    .eq(Activity::getCreatedBy, userId)
+                    .select(Activity::getId));
+            if (myActivities.isEmpty()) {
+                RegistrationStatsResponse empty = new RegistrationStatsResponse();
+                empty.setActivityId(null);
+                return empty;
+            }
+            List<Long> ids = myActivities.stream().map(Activity::getId).toList();
+            qw.in("activity_id", ids);
+        }
+        qw.groupBy("status");
+        List<Map<String, Object>> stats = registrationMapper.selectMaps(qw);
 
         RegistrationStatsResponse response = new RegistrationStatsResponse();
         response.setActivityId(activityId);

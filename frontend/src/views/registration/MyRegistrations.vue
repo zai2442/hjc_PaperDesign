@@ -21,7 +21,8 @@
 
     <el-table :data="rows" v-loading="loading" border style="width: 100%; margin-top: 20px">
       <el-table-column prop="id" label="ID" width="90" />
-      <el-table-column prop="activityId" label="活动ID" width="120" />
+      <el-table-column prop="activityId" label="活动ID" width="100" />
+      <el-table-column prop="activityTitle" label="活动名称" min-width="150" show-overflow-tooltip />
       <el-table-column prop="status" label="状态" width="120">
         <template #default="{ row }">
           <el-tag :type="statusTypeMap[row.status] || 'info'">
@@ -62,6 +63,7 @@
       <el-descriptions v-if="detailDialog.data" :column="2" border>
         <el-descriptions-item label="ID">{{ detailDialog.data.id }}</el-descriptions-item>
         <el-descriptions-item label="活动ID">{{ detailDialog.data.activityId }}</el-descriptions-item>
+        <el-descriptions-item label="活动名称">{{ detailDialog.data.activityTitle }}</el-descriptions-item>
         <el-descriptions-item label="用户ID">{{ detailDialog.data.userId }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ detailDialog.data.status }}</el-descriptions-item>
         <el-descriptions-item label="审核人">{{ detailDialog.data.auditBy }}</el-descriptions-item>

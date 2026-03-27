@@ -80,7 +80,25 @@
               </div>
             </div>
             <div class="card-footer">
-              <el-button type="primary" style="width: 100%" @click="openRegisterDialog(item)" :disabled="item.stockAvailable <= 0">
+              <!-- Case 1: Activity Ended -->
+              <el-button v-if="isEnded(item)" type="info" style="width: 100%" disabled>
+                活动已结束
+              </el-button>
+              
+              <!-- Case 2: Already Registered -->
+              <div v-else-if="item.registrationStatus === 'APPROVED'" class="registered-status">
+                <el-button type="info" style="width: 100%" disabled>
+                  已报名 (已通过)
+                </el-button>
+              </div>
+              <div v-else-if="item.registrationStatus" class="registered-status">
+                <el-tag :type="statusTypeMap[item.registrationStatus] || 'info'" effect="dark" style="width: 100%; height: 32px; font-size: 14px;">
+                  已报名 ({{ statusLabelMap[item.registrationStatus] || item.registrationStatus }})
+                </el-tag>
+              </div>
+
+              <!-- Case 3: Not Registered -->
+              <el-button v-else type="primary" style="width: 100%" @click="openRegisterDialog(item)" :disabled="item.stockAvailable <= 0">
                 立即报名
               </el-button>
             </div>
@@ -136,6 +154,21 @@ const page = ref(1)
 const size = ref(12)
 const total = ref(0)
 const activityList = ref([])
+const statusLabelMap = {
+  PENDING: '待审核',
+  APPROVED: '已通过',
+  REJECTED: '已拒绝',
+  CANCELED: '已取消',
+  COMPLETED: '已完成'
+}
+
+const statusTypeMap = {
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  CANCELED: 'info',
+  COMPLETED: 'success'
+}
 
 const router = useRouter()
 
@@ -220,6 +253,18 @@ const formatDate = (dateStr) => {
   if (!dateStr) return '待定'
   const date = new Date(dateStr)
   return `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+}
+
+const isEnded = (activity) => {
+  if (!activity) return false
+  const now = new Date()
+  const endTime = activity.endTime ? new Date(activity.endTime) : null
+  const regEndTime = activity.regEndTime ? new Date(activity.regEndTime) : null
+  
+  // If either activity end time or registration end time has passed
+  if (endTime && endTime < now) return true
+  if (regEndTime && regEndTime < now) return true
+  return false
 }
 
 onMounted(() => {

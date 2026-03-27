@@ -3,7 +3,6 @@ package com.campus.activity.activity.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.campus.activity.activity.dto.ActivityReserveResponse;
-import com.campus.activity.activity.dto.RegistrationCreateRequest;
 import com.campus.activity.activity.entity.Activity;
 import com.campus.activity.activity.mapper.ActivityMapper;
 import com.campus.activity.activity.service.ActivityService;
@@ -12,8 +11,15 @@ import com.campus.activity.common.Result;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.campus.activity.activity.dto.ActivityPublicResponse;
+import com.campus.activity.activity.entity.Registration;
+import com.campus.activity.activity.mapper.RegistrationMapper;
+import com.campus.activity.security.SecurityUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import java.time.LocalDateTime;
 
@@ -28,9 +34,10 @@ public class ActivityPublicController {
 
     private final ActivityMapper activityMapper;
     private final ActivityService activityService;
+    private final RegistrationMapper registrationMapper;
 
     @GetMapping
-    public Result<PageResponse<Activity>> page(@RequestParam(defaultValue = "1") long page,
+    public Result<PageResponse<ActivityPublicResponse>> page(@RequestParam(defaultValue = "1") long page,
                                               @RequestParam(defaultValue = "10") long size,
                                               @RequestParam(required = false) String keyword,
                                               @RequestParam(required = false) String type,
@@ -91,11 +98,30 @@ public class ActivityPublicController {
 
         Page<Activity> mpPage = new Page<>(p, s);
         Page<Activity> result = activityMapper.selectPage(mpPage, qw);
-        return Result.success(PageResponse.of(p, s, result.getTotal(), result.getRecords()));
+        
+        Long userId = SecurityUtils.getUserId();
+        List<ActivityPublicResponse> records = result.getRecords().stream().map(a -> {
+            String regStatus = null;
+            Long regId = null;
+            if (userId != null) {
+                Registration reg = registrationMapper.selectOne(new LambdaQueryWrapper<Registration>()
+                        .eq(Registration::getActivityId, a.getId())
+                        .eq(Registration::getUserId, userId)
+                        .orderByDesc(Registration::getId)
+                        .last("limit 1"));
+                if (reg != null) {
+                    regStatus = reg.getStatus();
+                    regId = reg.getId();
+                }
+            }
+            return ActivityPublicResponse.from(a, regStatus, regId);
+        }).collect(Collectors.toList());
+
+        return Result.success(PageResponse.of(p, s, result.getTotal(), records));
     }
 
     @GetMapping("/{id}")
-    public Result<Activity> detail(@PathVariable Long id) {
+    public Result<ActivityPublicResponse> detail(@PathVariable Long id) {
         Activity a = activityMapper.selectById(id);
         if (a == null) {
             return Result.error(404, "Activity not found");
@@ -110,7 +136,22 @@ public class ActivityPublicController {
         if (a.getOfflineAt() != null && !a.getOfflineAt().isAfter(now)) {
             return Result.error(404, "Activity not found");
         }
-        return Result.success(a);
+        
+        Long userId = SecurityUtils.getUserId();
+        String regStatus = null;
+        Long regId = null;
+        if (userId != null) {
+            Registration reg = registrationMapper.selectOne(new LambdaQueryWrapper<Registration>()
+                    .eq(Registration::getActivityId, id)
+                    .eq(Registration::getUserId, userId)
+                    .orderByDesc(Registration::getId)
+                    .last("limit 1"));
+            if (reg != null) {
+                regStatus = reg.getStatus();
+                regId = reg.getId();
+            }
+        }
+        return Result.success(ActivityPublicResponse.from(a, regStatus, regId));
     }
 
     @PostMapping("/{id}/reserve")

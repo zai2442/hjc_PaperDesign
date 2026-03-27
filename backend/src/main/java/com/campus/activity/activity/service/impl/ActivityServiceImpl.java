@@ -207,6 +207,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
 
         Activity after = mustGet(activity.getId());
         writeChangeLog(after.getId(), userId, "CREATE", after, after);
+        operationLogService.log("CREATE", after.getId(), after.getTitle(), after, true, null);
         return activity.getId();
     }
 
@@ -351,6 +352,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
 
         Activity after = mustGet(id);
         writeChangeLog(id, userId, "UPDATE", before, after);
+        operationLogService.log("UPDATE", id, after.getTitle(), after, true, null);
         evictActivityDetail(id);
     }
 
@@ -421,6 +423,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         }
         Activity after = mustGet(id);
         writeChangeLog(id, SecurityUtils.getUserId(), "WITHDRAW", before, after);
+        operationLogService.log("WITHDRAW", id, after.getTitle(), after, true, null);
     }
 
     @Override
@@ -458,6 +461,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
 
         Activity after = mustGet(id);
         writeChangeLog(id, SecurityUtils.getUserId(), "APPROVE", before, after);
+        operationLogService.log("APPROVE", id, after.getTitle(), after, true, null);
 
         if (STATUS_ONLINE.equals(after.getStatus())) {
             cacheActivityDetail(after);
@@ -491,6 +495,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         }
         Activity after = mustGet(id);
         writeChangeLog(id, SecurityUtils.getUserId(), "REJECT", before, after);
+        operationLogService.log("REJECT", id, after.getTitle(), after, true, null);
     }
 
     @Override
@@ -518,6 +523,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         }
         Activity after = mustGet(id);
         writeChangeLog(id, SecurityUtils.getUserId(), "REVOKE_SCHEDULE", before, after);
+        operationLogService.log("REVOKE_SCHEDULE", id, after.getTitle(), after, true, null);
     }
 
     @Override

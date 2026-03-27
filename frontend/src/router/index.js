@@ -4,11 +4,7 @@ const routes = [
   {
     path: '/',
     component: () => import('../views/Layout.vue'),
-    redirect: to => {
-      const role = localStorage.getItem('user_role')
-      if (role === 'ROLE_STUDENT') return '/student/activities'
-      return '/user-management'
-    },
+    redirect: '/personal-center',
     children: [
       {
         path: 'user-management',

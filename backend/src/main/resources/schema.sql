@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS sys_operation_log (
     operator_nickname VARCHAR(100),
     activity_id BIGINT,
     activity_title VARCHAR(255),
-    op_type VARCHAR(50) NOT NULL COMMENT 'OFFLINE, WHITELIST_ADD, WHITELIST_REMOVE, DELETE',
+    op_type VARCHAR(50) NOT NULL COMMENT 'CREATE, UPDATE, DELETE, OFFLINE, APPROVE, REJECT, ...',
     op_detail LONGTEXT COMMENT 'Full JSON detail including diff',
     op_result TINYINT DEFAULT 1 COMMENT '1:success, 0:fail',
     error_msg TEXT,

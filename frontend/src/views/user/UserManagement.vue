@@ -2,7 +2,26 @@
   <div class="user-management">
     <el-card>
       <template #header>
-        <span>用户角色管理</span>
+        <div class="header-content">
+          <span>用户角色管理</span>
+          <div class="controls">
+            <el-input
+              v-model="searchQuery.username"
+              placeholder="搜索用户名"
+              clearable
+              style="width: 200px; margin-right: 15px;"
+              @clear="handleSearch"
+              @keyup.enter="handleSearch"
+            >
+              <template #append>
+                <el-button icon="Search" @click="handleSearch" />
+              </template>
+            </el-input>
+            <el-checkbox v-model="searchQuery.sortByRole" @change="handleSearch">
+              按角色排序
+            </el-checkbox>
+          </div>
+        </div>
       </template>
       
       <el-table :data="users" style="width: 100%">
@@ -53,21 +72,30 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import request from '../../utils/request'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 
 const users = ref([])
 const allRoles = ref([])
 const assignDialogVisible = ref(false)
 const currentUser = ref(null)
 const selectedRoleIds = ref([])
+const searchQuery = reactive({
+  username: '',
+  sortByRole: false
+})
+
+const handleSearch = () => {
+  fetchUsers()
+}
 
 const fetchUsers = async () => {
   try {
     const userRole = localStorage.getItem('user_role')
     if (userRole === 'ROLE_SUPER_ADMIN') {
-      const res = await request.get('/users')
+      const res = await request.get('/users', { params: searchQuery })
       users.value = res.data
     } else {
       const res = await request.get('/users/me')
@@ -116,5 +144,14 @@ onMounted(() => {
 <style scoped>
 .user-management {
   padding: 20px;
+}
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.controls {
+  display: flex;
+  align-items: center;
 }
 </style>

@@ -50,10 +50,8 @@ const handleLogin = async () => {
     const redirectPath = route.query.redirect
     if (redirectPath) {
       router.push(redirectPath)
-    } else if (userRes.data.roles && userRes.data.roles.some(r => r.roleCode === 'ROLE_STUDENT')) {
-      router.push('/student/activities')
     } else {
-      router.push('/user-management')
+      router.push('/personal-center')
     }
   } catch (error) {
     console.error(error)

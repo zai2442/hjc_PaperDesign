@@ -1,6 +1,6 @@
 <template>
   <div class="personal-center">
-    <el-page-header content="个人中心" style="margin-bottom: 20px" />
+    <el-page-header content="个人中心" style="margin-bottom: 20px" @back="goBack" />
 
     <el-tabs v-model="activeTab" type="border-card">
       <!-- Tab 1: Activity Calendar -->
@@ -129,11 +129,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import { getUserInfo, updateUserInfo, changePassword } from '../../api/user'
 import { getMyRegistrations } from '../../api/registration'
 
+const router = useRouter()
 const activeTab = ref('calendar')
 const calendarView = ref('month')
 const currentDate = ref(new Date())
@@ -174,6 +176,10 @@ const navigateCalendar = (dir) => {
 }
 
 const goToday = () => { currentDate.value = new Date() }
+
+const goBack = () => {
+  router.back()
+}
 
 const getStartOfWeek = (date) => {
   const d = new Date(date)

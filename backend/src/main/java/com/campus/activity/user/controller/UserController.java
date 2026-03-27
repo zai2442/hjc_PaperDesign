@@ -23,8 +23,10 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public Result<List<UserInfoDto>> listUsers() {
-        return Result.success(userService.getAllUsers());
+    public Result<List<UserInfoDto>> listUsers(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) Boolean sortByRole) {
+        return Result.success(userService.getAllUsers(username, sortByRole));
     }
 
     @GetMapping("/me")

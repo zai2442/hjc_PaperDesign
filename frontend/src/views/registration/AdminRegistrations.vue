@@ -23,13 +23,13 @@
             <el-option label="已完成" value="COMPLETED" />
           </el-select>
         </el-form-item>
-        <el-form-item>
-          <el-input v-model="queryForm.keyword" placeholder="关键字（预留）" clearable @keyup.enter="handleSearch" />
+        <el-form-item label="名称">
+          <el-input v-model="queryForm.keyword" placeholder="活动名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" :disabled="!queryForm.activityId">查询</el-button>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
-          <el-button type="success" plain @click="refreshStats" :disabled="!queryForm.activityId">刷新统计</el-button>
+          <el-button type="success" plain @click="refreshStats">刷新统计</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -69,7 +69,9 @@
 
     <el-table :data="rows" v-loading="loading" border style="width: 100%">
       <el-table-column prop="id" label="ID" width="90" />
-      <el-table-column prop="userId" label="用户ID" width="120" />
+      <el-table-column prop="activityId" label="活动ID" width="100" />
+      <el-table-column prop="activityTitle" label="活动名称" min-width="150" show-overflow-tooltip />
+      <el-table-column prop="userId" label="用户ID" width="100" />
       <el-table-column prop="status" label="状态" width="120">
         <template #default="{ row }">
           <el-tag :type="statusTypeMap[row.status] || 'info'">
@@ -78,7 +80,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="auditReason" label="审核意见" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="auditBy" label="审核人" width="120" />
+      <el-table-column prop="auditByName" label="审核人" width="120" />
       <el-table-column prop="auditAt" label="审核时间" width="180" />
       <el-table-column prop="createdAt" label="报名时间" width="180" />
       <el-table-column prop="updatedAt" label="更新时间" width="180" />
@@ -110,9 +112,10 @@
       <el-descriptions v-if="detailDialog.data" :column="2" border>
         <el-descriptions-item label="ID">{{ detailDialog.data.id }}</el-descriptions-item>
         <el-descriptions-item label="活动ID">{{ detailDialog.data.activityId }}</el-descriptions-item>
+        <el-descriptions-item label="活动名称">{{ detailDialog.data.activityTitle }}</el-descriptions-item>
         <el-descriptions-item label="用户ID">{{ detailDialog.data.userId }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ detailDialog.data.status }}</el-descriptions-item>
-        <el-descriptions-item label="审核人">{{ detailDialog.data.auditBy }}</el-descriptions-item>
+        <el-descriptions-item label="审核人">{{ detailDialog.data.auditByName || detailDialog.data.auditBy }}</el-descriptions-item>
         <el-descriptions-item label="审核时间">{{ detailDialog.data.auditAt }}</el-descriptions-item>
         <el-descriptions-item label="审核意见" :span="2">{{ detailDialog.data.auditReason }}</el-descriptions-item>
         <el-descriptions-item label="报名时间">{{ detailDialog.data.createdAt }}</el-descriptions-item>
@@ -207,7 +210,6 @@ const fetchActivities = async () => {
 }
 
 const fetchList = async () => {
-  if (!queryForm.value.activityId) return
   loading.value = true
   try {
     const res = await getAdminRegistrations({
@@ -225,7 +227,6 @@ const fetchList = async () => {
 }
 
 const refreshStats = async () => {
-  if (!queryForm.value.activityId) return
   const res = await getRegistrationStats({ activityId: queryForm.value.activityId })
   stats.value = res.data
 }
@@ -234,7 +235,11 @@ const handleSearch = async () => {
   queryForm.value.page = 1
   await fetchList()
   await refreshStats()
-  router.replace({ path: route.path, query: { activityId: String(queryForm.value.activityId) } })
+  if (queryForm.value.activityId) {
+    router.replace({ path: route.path, query: { activityId: String(queryForm.value.activityId) } })
+  } else {
+    router.replace({ path: route.path, query: {} })
+  }
 }
 
 const resetQuery = () => {
@@ -296,8 +301,8 @@ onMounted(async () => {
   const activityId = route.query.activityId
   if (activityId) {
     queryForm.value.activityId = Number(activityId)
-    await handleSearch()
   }
+  await handleSearch()
 })
 </script>
 

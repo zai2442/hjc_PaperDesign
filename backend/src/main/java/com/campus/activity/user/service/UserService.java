@@ -13,5 +13,5 @@ public interface UserService extends IService<User> {
     void register(RegisterDto registerDto);
     void updateUserInfo(User user);
     void resetPassword(Long userId, String oldPassword, String newPassword);
-    List<UserInfoDto> getAllUsers();
+    List<UserInfoDto> getAllUsers(String username, Boolean sortByRole);
 }

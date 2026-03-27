@@ -54,7 +54,58 @@
           </div>
           
           <div class="action-box">
+             <!-- Case 1: Activity Ended -->
              <el-button 
+               v-if="isEnded(activity)"
+               type="info" 
+               size="large" 
+               style="width: 100%" 
+               disabled
+             >
+               活动已结束
+             </el-button>
+
+             <!-- Case 2: Already Registered & Approved -->
+             <template v-else-if="activity.registrationStatus === 'APPROVED'">
+               <el-alert
+                 title="您已成功报名此活动"
+                 type="success"
+                 :closable="false"
+                 show-icon
+                 style="margin-bottom: 15px"
+               />
+               <el-button 
+                 type="info" 
+                 size="large" 
+                 style="width: 100%" 
+                 disabled
+               >
+                 已通过 (无需再次报名)
+               </el-button>
+             </template>
+
+             <!-- Case 3: Registered (Other status) -->
+             <template v-else-if="activity.registrationStatus">
+               <el-alert
+                 :title="'您已报名此活动 - ' + (statusLabelMap[activity.registrationStatus] || activity.registrationStatus)"
+                 :type="statusTypeMap[activity.registrationStatus] || 'info'"
+                 :closable="false"
+                 show-icon
+                 style="margin-bottom: 15px"
+               />
+               <el-button 
+                 type="info" 
+                 size="large" 
+                 style="width: 100%" 
+                 disabled
+               >
+                 查看报名详情 (我的报名)
+               </el-button>
+             </template>
+
+             <!-- Case 4: Not Registered -->
+             <el-button 
+               v-else
                type="primary" 
                size="large" 
                style="width: 100%" 
@@ -102,6 +153,22 @@ const registerDialogVisible = ref(false)
 const extraData = ref('')
 const registering = ref(false)
 
+const statusLabelMap = {
+  PENDING: '待审核',
+  APPROVED: '已通过',
+  REJECTED: '已拒绝',
+  CANCELED: '已取消',
+  COMPLETED: '已完成'
+}
+
+const statusTypeMap = {
+  PENDING: 'warning',
+  APPROVED: 'success',
+  REJECTED: 'danger',
+  CANCELED: 'info',
+  COMPLETED: 'success'
+}
+
 const goBack = () => {
   router.back()
 }
@@ -109,6 +176,17 @@ const goBack = () => {
 const formatDate = (dateStr) => {
   if (!dateStr) return '待定'
   return dateStr.replace('T', ' ').substring(0, 16)
+}
+
+const isEnded = (activity) => {
+  if (!activity) return false
+  const now = new Date()
+  const endTime = activity.endTime ? new Date(activity.endTime) : null
+  const regEndTime = activity.regEndTime ? new Date(activity.regEndTime) : null
+  
+  if (endTime && endTime < now) return true
+  if (regEndTime && regEndTime < now) return true
+  return false
 }
 
 const loadDetail = async () => {

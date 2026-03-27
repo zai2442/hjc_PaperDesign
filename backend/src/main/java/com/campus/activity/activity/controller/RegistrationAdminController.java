@@ -22,7 +22,7 @@ public class RegistrationAdminController {
     @GetMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','COUNSELOR','CLUB_OWNER')")
     public Result<PageResponse<Registration>> pageAdminRegistrations(
-            @RequestParam Long activityId,
+            @RequestParam(required = false) Long activityId,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "10") long size,
             @RequestParam(required = false) String status,
@@ -39,7 +39,7 @@ public class RegistrationAdminController {
 
     @GetMapping("/stats")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','COUNSELOR','CLUB_OWNER')")
-    public Result<RegistrationStatsResponse> getStats(@RequestParam Long activityId) {
+    public Result<RegistrationStatsResponse> getStats(@RequestParam(required = false) Long activityId) {
         return Result.success(registrationService.getStats(activityId));
     }
 }
