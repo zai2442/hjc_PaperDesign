@@ -27,6 +27,14 @@
           <el-icon><List /></el-icon>
           <span>报名管理</span>
         </el-menu-item>
+        <el-menu-item index="/admin/stats" v-if="userRole === 'ROLE_SUPER_ADMIN' || userRole === 'ROLE_COUNSELOR'">
+          <el-icon><PieChart /></el-icon>
+          <span>数据统计</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/logs" v-if="userRole === 'ROLE_SUPER_ADMIN' || userRole === 'ROLE_COUNSELOR'">
+          <el-icon><Document /></el-icon>
+          <span>系统日志</span>
+        </el-menu-item>
         <el-menu-item index="/personal-center">
           <el-icon><User /></el-icon>
           <span>个人中心</span>
@@ -62,7 +70,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { User, Calendar, ArrowDown, Tickets, List } from '@element-plus/icons-vue'
+import { User, Calendar, ArrowDown, Tickets, List, PieChart, Document } from '@element-plus/icons-vue'
 import request from '../utils/request'
 
 const route = useRoute()

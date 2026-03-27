@@ -26,6 +26,7 @@ import com.campus.activity.activity.service.ActivityService;
 import com.campus.activity.activity.util.ActivityDiffUtils;
 import com.campus.activity.common.ApiException;
 import com.campus.activity.common.PageResponse;
+import com.campus.activity.log.service.OperationLogService;
 import com.campus.activity.security.SecurityUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,6 +66,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
     private final TagMapper tagMapper;
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate stringRedisTemplate;
+    private final OperationLogService operationLogService;
 
     private static String cacheKeyDetail(Long id) {
         return "activity:detail:" + id;
@@ -370,6 +372,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         Activity after = objectMapper.convertValue(before, Activity.class);
         after.setDeleted(1);
         writeChangeLog(id, SecurityUtils.getUserId(), "DELETE", before, after);
+        operationLogService.log("DELETE", id, before.getTitle(), after, true, null);
         evictActivityDetail(id);
     }
 
@@ -539,6 +542,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
 
         Activity after = mustGet(id);
         writeChangeLog(id, SecurityUtils.getUserId(), "OFFLINE", before, after);
+        operationLogService.log("OFFLINE", id, after.getTitle(), after, true, null);
         evictActivityDetail(id);
     }
 
@@ -561,7 +565,10 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
                 activityMapper.updateById(patch);
                 evictActivityDetail(id);
                 writeOpLog(id, userId, "BATCH_OFFLINE", "{}");
-            } catch (Exception ignored) {}
+                operationLogService.log("OFFLINE", id, activity.getTitle(), patch, true, null);
+            } catch (Exception e) {
+                operationLogService.log("OFFLINE", id, null, null, false, e.getMessage());
+            }
         }
     }
 
@@ -582,7 +589,10 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
                 activityMapper.update(null, uw);
                 evictActivityDetail(id);
                 writeOpLog(id, userId, "BATCH_DELETE", "{}");
-            } catch (Exception ignored) {}
+                operationLogService.log("DELETE", id, activity.getTitle(), null, true, null);
+            } catch (Exception e) {
+                operationLogService.log("DELETE", id, null, null, false, e.getMessage());
+            }
         }
     }
 
@@ -756,6 +766,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
             whitelistMapper.insert(wl);
         }
         writeOpLog(activityId, SecurityUtils.getUserId(), "WHITELIST_ADD", diffData);
+        operationLogService.log("WHITELIST_ADD", activityId, activity.getTitle(), java.util.Map.of("userIds", userIds), true, null);
     }
 
     @Override
@@ -776,6 +787,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
             diffData = "{}";
         }
         writeOpLog(activityId, SecurityUtils.getUserId(), "WHITELIST_REMOVE", diffData);
+        operationLogService.log("WHITELIST_REMOVE", activityId, activity.getTitle(), java.util.Map.of("userIds", userIds), true, null);
     }
 
     @Override
@@ -885,6 +897,7 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
             if (ok) {
                 Activity after = mustGet(a.getId());
                 writeChangeLog(after.getId(), 0L, "SCHEDULE_OFFLINE", before, after);
+                operationLogService.log("OFFLINE", a.getId(), after.getTitle(), after, true, "Scheduled offline");
                 evictActivityDetail(after.getId());
             }
         }

@@ -27,5 +27,16 @@ public class TestTokenUtil {
         JsonNode json = objectMapper.readTree(resp);
         return json.get("data").asText();
     }
+
+    public static String createToken(String username, String role) {
+        // Simple token generation for tests
+        return io.jsonwebtoken.Jwts.builder()
+                .setSubject(username)
+                .claim("roles", java.util.Collections.singletonList(role))
+                .setIssuedAt(new java.util.Date())
+                .setExpiration(new java.util.Date(System.currentTimeMillis() + 3600000))
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor("test_secret_key_32_characters_long_!!".getBytes()), io.jsonwebtoken.SignatureAlgorithm.HS256)
+                .compact();
+    }
 }
 

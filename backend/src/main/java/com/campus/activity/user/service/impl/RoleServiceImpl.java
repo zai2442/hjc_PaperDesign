@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -21,7 +20,6 @@ import java.util.List;
 public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements RoleService {
 
     private static final long ADMIN_USER_ID = 1L;
-    private static final long SUPER_ADMIN_ROLE_ID = 1L;
 
     private final UserRoleMapper userRoleMapper;
     private final RolePermissionMapper rolePermissionMapper;
@@ -30,7 +28,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     @Transactional
     public void assignRolesToUser(Long userId, List<Long> roleIds) {
         if (ADMIN_USER_ID == userId) {
-            ensureAdminIsSuperAdmin();
+            return; // System admin roles are fixed
         }
         if (roleIds == null || roleIds.isEmpty()) {
             return;
@@ -43,30 +41,15 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
                 userRoleMapper.insert(ur);
             }
         }
-        if (ADMIN_USER_ID == userId) {
-            ensureAdminIsSuperAdmin();
-        }
     }
 
     @Override
     @Transactional
     public void removeRolesFromUser(Long userId, List<Long> roleIds) {
-        if (roleIds == null || roleIds.isEmpty()) {
-            return;
-        }
         if (ADMIN_USER_ID == userId) {
-            List<Long> filtered = new ArrayList<>();
-            for (Long roleId : roleIds) {
-                if (roleId != null && roleId != SUPER_ADMIN_ROLE_ID) {
-                    filtered.add(roleId);
-                }
-            }
-            if (filtered.isEmpty()) {
-                ensureAdminIsSuperAdmin();
-                return;
-            }
-            userRoleMapper.delete(new QueryWrapper<UserRole>().eq("user_id", userId).in("role_id", filtered));
-            ensureAdminIsSuperAdmin();
+            return; // System admin roles are fixed
+        }
+        if (roleIds == null || roleIds.isEmpty()) {
             return;
         }
         userRoleMapper.delete(new QueryWrapper<UserRole>().eq("user_id", userId).in("role_id", roleIds));
@@ -83,17 +66,6 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
             rp.setRoleId(roleId);
             rp.setPermissionId(permId);
             rolePermissionMapper.insert(rp);
-        }
-    }
-
-    private void ensureAdminIsSuperAdmin() {
-        if (userRoleMapper.selectCount(
-                new QueryWrapper<UserRole>().eq("user_id", ADMIN_USER_ID).eq("role_id", SUPER_ADMIN_ROLE_ID)
-        ) == 0) {
-            UserRole ur = new UserRole();
-            ur.setUserId(ADMIN_USER_ID);
-            ur.setRoleId(SUPER_ADMIN_ROLE_ID);
-            userRoleMapper.insert(ur);
         }
     }
 }

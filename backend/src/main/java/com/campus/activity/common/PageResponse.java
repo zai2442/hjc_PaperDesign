@@ -19,4 +19,8 @@ public class PageResponse<T> {
         resp.setRecords(records);
         return resp;
     }
+
+    public static <T> PageResponse<T> from(com.baomidou.mybatisplus.extension.plugins.pagination.Page<T> mpPage) {
+        return of(mpPage.getCurrent(), mpPage.getSize(), mpPage.getTotal(), mpPage.getRecords());
+    }
 }

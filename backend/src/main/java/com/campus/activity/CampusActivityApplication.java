@@ -6,7 +6,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@MapperScan({"com.campus.activity.user.mapper", "com.campus.activity.activity.mapper"})
+@MapperScan("com.campus.activity.**.mapper")
 @EnableScheduling
 public class CampusActivityApplication {
     public static void main(String[] args) {

@@ -59,6 +59,16 @@ const routes = [
         path: 'personal-center',
         name: 'PersonalCenter',
         component: () => import('../views/user/PersonalCenter.vue')
+      },
+      {
+        path: 'admin/stats',
+        name: 'DataStatistics',
+        component: () => import('../views/stats/DataStatistics.vue')
+      },
+      {
+        path: 'admin/logs',
+        name: 'LogManagement',
+        component: () => import('../views/admin/LogManagement.vue')
       }
     ]
   },

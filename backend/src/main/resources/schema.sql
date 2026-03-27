@@ -189,3 +189,21 @@ CREATE TABLE IF NOT EXISTS act_check_in_record (
     KEY idx_checkin_activity (activity_id, id),
     KEY idx_checkin_user (user_id, id)
 );
+
+CREATE TABLE IF NOT EXISTS sys_operation_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    operator_id BIGINT NOT NULL,
+    operator_username VARCHAR(50) NOT NULL,
+    operator_nickname VARCHAR(100),
+    activity_id BIGINT,
+    activity_title VARCHAR(255),
+    op_type VARCHAR(50) NOT NULL COMMENT 'OFFLINE, WHITELIST_ADD, WHITELIST_REMOVE, DELETE',
+    op_detail LONGTEXT COMMENT 'Full JSON detail including diff',
+    op_result TINYINT DEFAULT 1 COMMENT '1:success, 0:fail',
+    error_msg TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_op_log_activity (activity_id),
+    KEY idx_op_log_operator (operator_username),
+    KEY idx_op_log_created_at (created_at),
+    KEY idx_op_log_type (op_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

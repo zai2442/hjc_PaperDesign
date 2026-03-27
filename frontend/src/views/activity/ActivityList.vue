@@ -47,7 +47,7 @@
       </el-table-column>
       <el-table-column prop="stockTotal" label="名额" width="80" />
       <el-table-column prop="stockAvailable" label="剩余" width="80" />
-      <el-table-column label="操作" width="300" fixed="right">
+      <el-table-column label="操作" width="340" fixed="right">
         <template #default="{ row }">
           <el-button-group>
             <el-button link type="primary" @click="handleEdit(row)" v-if="canEdit(row)">编辑</el-button>
@@ -59,7 +59,8 @@
             <el-button link type="primary" @click="handleRegistrations(row)" v-if="canManageRegistrations">报名</el-button>
             <el-button link type="success" @click="handleCheckInAdmin(row)" v-if="canManageRegistrations && row.status === 'ONLINE'">签到</el-button>
             <el-button link type="warning" @click="handleWhitelist(row)" v-if="canManageRegistrations && row.whitelistEnabled === 1">白名单</el-button>
-            <el-button link type="info" @click="handleShowLogs(row)">日志</el-button>
+            <el-button link type="info" @click="goSystemLogs(row)">日志</el-button>
+            <el-button link type="info" @click="handleShowLogs(row)">变更</el-button>
             <el-button link type="danger" @click="handleDelete(row)" v-if="canAdmin">删除</el-button>
           </el-button-group>
         </template>
@@ -231,6 +232,10 @@ const handleRegistrations = (row) => {
 
 const handleCheckInAdmin = (row) => {
   router.push({ path: '/checkin/admin', query: { activityId: row.id } })
+}
+
+const goSystemLogs = (row) => {
+  router.push({ path: '/admin/logs', query: { keyword: String(row.id) } })
 }
 
 const fetchActivities = async () => {
