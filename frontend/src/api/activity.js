@@ -138,3 +138,26 @@ export function uploadFile(file) {
     }
   })
 }
+
+export function getWhitelistUserIds(activityId) {
+  return request({
+    url: `/admin/activities/${activityId}/whitelist`,
+    method: 'get'
+  })
+}
+
+export function addWhitelistUsers(activityId, ids) {
+  return request({
+    url: `/admin/activities/${activityId}/whitelist`,
+    method: 'post',
+    data: { ids }
+  })
+}
+
+export function removeWhitelistUsers(activityId, ids) {
+  return request({
+    url: `/admin/activities/${activityId}/whitelist/remove`,
+    method: 'post',
+    data: { ids }
+  })
+}

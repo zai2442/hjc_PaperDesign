@@ -127,4 +127,24 @@ public class ActivityAdminController {
         activityService.batchDelete(req.getIds());
         return Result.success(null);
     }
+
+    @GetMapping("/{id}/whitelist")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','COUNSELOR','CLUB_OWNER')")
+    public Result<java.util.List<Long>> listWhitelist(@PathVariable Long id) {
+        return Result.success(activityService.listWhitelistUserIds(id));
+    }
+
+    @PostMapping("/{id}/whitelist")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','COUNSELOR','CLUB_OWNER')")
+    public Result<Void> addWhitelist(@PathVariable Long id, @Valid @RequestBody IdListRequest req) {
+        activityService.addWhitelist(id, req.getIds());
+        return Result.success(null);
+    }
+
+    @PostMapping("/{id}/whitelist/remove")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','COUNSELOR','CLUB_OWNER')")
+    public Result<Void> removeWhitelist(@PathVariable Long id, @Valid @RequestBody IdListRequest req) {
+        activityService.removeWhitelist(id, req.getIds());
+        return Result.success(null);
+    }
 }

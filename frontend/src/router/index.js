@@ -26,6 +26,11 @@ const routes = [
         component: () => import('../views/activity/StudentActivityList.vue')
       },
       {
+        path: 'activity/detail/:id',
+        name: 'ActivityDetail',
+        component: () => import('../views/activity/ActivityDetail.vue')
+      },
+      {
         path: 'activity/create',
         name: 'ActivityCreate',
         component: () => import('../views/activity/ActivityEdit.vue')
@@ -44,6 +49,16 @@ const routes = [
         path: 'registration/admin',
         name: 'AdminRegistrations',
         component: () => import('../views/registration/AdminRegistrations.vue')
+      },
+      {
+        path: 'checkin/admin',
+        name: 'CheckInAdmin',
+        component: () => import('../views/activity/CheckInAdmin.vue')
+      },
+      {
+        path: 'personal-center',
+        name: 'PersonalCenter',
+        component: () => import('../views/user/PersonalCenter.vue')
       }
     ]
   },
@@ -56,6 +71,11 @@ const routes = [
     path: '/register',
     name: 'Register',
     component: () => import('../views/Register.vue')
+  },
+  {
+    path: '/checkin/scan',
+    name: 'CheckInScan',
+    component: () => import('../views/activity/CheckInScan.vue')
   }
 ]
 
@@ -69,8 +89,12 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const role = localStorage.getItem('user_role')
   // Allow unauthenticated access to login and register pages
-  if (!token && !['/login', '/register'].includes(to.path)) {
-    return next('/login')
+  if (!token && !['/login', '/register', '/checkin/scan'].includes(to.path)) {
+    return next({ path: '/login', query: { redirect: to.fullPath } })
+  }
+  
+  if (!token && to.path === '/checkin/scan') {
+    return next({ path: '/login', query: { redirect: to.fullPath } })
   }
   // Allow students or unknown roles (will be fetched in Layout) to access student routes initially
   if (to.path.startsWith('/student') && role && role !== 'ROLE_STUDENT') {

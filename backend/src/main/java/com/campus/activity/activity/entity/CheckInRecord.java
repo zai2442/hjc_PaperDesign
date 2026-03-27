@@ -9,8 +9,8 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("act_registration")
-public class Registration {
+@TableName("act_check_in_record")
+public class CheckInRecord {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -21,32 +21,14 @@ public class Registration {
     @TableField("user_id")
     private Long userId;
 
-    private String status;
+    @TableField("check_in_time")
+    private LocalDateTime checkInTime;
 
-    @TableField("extra_data")
-    private String extraData;
-
-    @TableField("audit_reason")
-    private String auditReason;
-
-    @TableField("audit_by")
-    private Long auditBy;
-
-    @TableField("audit_at")
-    private LocalDateTime auditAt;
+    private String type; // SCAN or MANUAL
 
     @TableField("created_at")
     private LocalDateTime createdAt;
 
     @TableField("updated_at")
     private LocalDateTime updatedAt;
-
-    @TableField(exist = false)
-    private String activityTitle;
-
-    @TableField(exist = false)
-    private LocalDateTime activityStartTime;
-
-    @TableField(exist = false)
-    private LocalDateTime activityEndTime;
 }

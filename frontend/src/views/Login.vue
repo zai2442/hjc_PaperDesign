@@ -23,11 +23,12 @@
 
 <script setup>
 import { reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import request from '../utils/request'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const loginForm = reactive({
   username: '',
   password: ''
@@ -46,7 +47,10 @@ const handleLogin = async () => {
     }
     
     ElMessage.success('Login Successful')
-    if (userRes.data.roles && userRes.data.roles.some(r => r.roleCode === 'ROLE_STUDENT')) {
+    const redirectPath = route.query.redirect
+    if (redirectPath) {
+      router.push(redirectPath)
+    } else if (userRes.data.roles && userRes.data.roles.some(r => r.roleCode === 'ROLE_STUDENT')) {
       router.push('/student/activities')
     } else {
       router.push('/user-management')

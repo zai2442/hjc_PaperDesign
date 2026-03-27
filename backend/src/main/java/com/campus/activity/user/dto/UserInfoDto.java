@@ -10,6 +10,8 @@ import java.util.List;
 public class UserInfoDto {
     private Long id;
     private String username;
+    private String nickname;
+    private String avatarUrl;
     private String email;
     private String phone;
     private List<Role> roles;
@@ -18,6 +20,8 @@ public class UserInfoDto {
         UserInfoDto dto = new UserInfoDto();
         dto.setId(user.getId());
         dto.setUsername(user.getUsername());
+        dto.setNickname(user.getNickname());
+        dto.setAvatarUrl(user.getAvatarUrl());
         dto.setEmail(user.getEmail());
         dto.setPhone(user.getPhone());
         dto.setRoles(roles);

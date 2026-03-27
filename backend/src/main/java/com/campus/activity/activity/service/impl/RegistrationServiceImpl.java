@@ -265,7 +265,32 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         }
         qw.orderByDesc(Registration::getId);
         Page<Registration> result = registrationMapper.selectPage(mpPage, qw);
+        fillActivityDetails(result.getRecords());
         return PageResponse.of(p, s, result.getTotal(), result.getRecords());
+    }
+
+    private void fillActivityDetails(List<Registration> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Long> activityIds = records.stream()
+                .map(Registration::getActivityId)
+                .distinct()
+                .collect(Collectors.toList());
+        if (activityIds.isEmpty()) {
+            return;
+        }
+        List<Activity> activities = activityMapper.selectBatchIds(activityIds);
+        Map<Long, Activity> activityMap = activities.stream()
+                .collect(Collectors.toMap(Activity::getId, a -> a));
+        for (Registration reg : records) {
+            Activity act = activityMap.get(reg.getActivityId());
+            if (act != null) {
+                reg.setActivityTitle(act.getTitle());
+                reg.setActivityStartTime(act.getStartTime());
+                reg.setActivityEndTime(act.getEndTime());
+            }
+        }
     }
 
     @Override
@@ -274,6 +299,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         if (reg == null) {
             throw new ApiException(404, HttpStatus.NOT_FOUND, "Registration not found");
         }
+        fillActivityDetails(List.of(reg));
         Long userId = SecurityUtils.getUserId();
         if (userId != null && userId.equals(reg.getUserId())) {
             return reg;
@@ -307,6 +333,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         // 如果有keyword，通常是搜索用户名，但当前表没有用户名。为简化可忽略keyword，或连表查询
         qw.orderByDesc(Registration::getId);
         Page<Registration> result = registrationMapper.selectPage(mpPage, qw);
+        fillActivityDetails(result.getRecords());
         return PageResponse.of(p, s, result.getTotal(), result.getRecords());
     }
 

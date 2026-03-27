@@ -57,6 +57,8 @@
             <el-button link type="danger" @click="handleReject(row)" v-if="canAudit && row.status === 'PENDING_REVIEW'">驳回</el-button>
             <el-button link type="danger" @click="handleOffline(row)" v-if="row.status === 'ONLINE'">下线</el-button>
             <el-button link type="primary" @click="handleRegistrations(row)" v-if="canManageRegistrations">报名</el-button>
+            <el-button link type="success" @click="handleCheckInAdmin(row)" v-if="canManageRegistrations && row.status === 'ONLINE'">签到</el-button>
+            <el-button link type="warning" @click="handleWhitelist(row)" v-if="canManageRegistrations && row.whitelistEnabled === 1">白名单</el-button>
             <el-button link type="info" @click="handleShowLogs(row)">日志</el-button>
             <el-button link type="danger" @click="handleDelete(row)" v-if="canAdmin">删除</el-button>
           </el-button-group>
@@ -123,6 +125,23 @@
         <el-button link @click="loadMoreLogs">加载更多</el-button>
       </div>
     </el-drawer>
+
+    <!-- 白名单管理对话框 -->
+    <el-dialog v-model="whitelistDialog.visible" title="白名单管理" width="700px">
+      <el-transfer
+        v-model="whitelistDialog.selectedIds"
+        :data="whitelistDialog.allUsers"
+        :titles="['未加入', '已加入白名单']"
+        :props="{ key: 'id', label: 'label' }"
+        filterable
+        filter-placeholder="搜索用户"
+        v-loading="whitelistDialog.loading"
+      />
+      <template #footer>
+        <el-button @click="whitelistDialog.visible = false">取消</el-button>
+        <el-button type="primary" @click="saveWhitelist" :loading="whitelistDialog.saving">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -141,8 +160,12 @@ import {
   batchOfflineActivities,
   batchDeleteActivities,
   getActivityChangeLogs,
-  rollbackActivity
+  rollbackActivity,
+  getWhitelistUserIds,
+  addWhitelistUsers,
+  removeWhitelistUsers
 } from '../../api/activity'
+import request from '../../utils/request'
 
 const router = useRouter()
 const loading = ref(false)
@@ -204,6 +227,10 @@ const canEdit = (row) => {
 
 const handleRegistrations = (row) => {
   router.push({ path: '/registration/admin', query: { activityId: row.id } })
+}
+
+const handleCheckInAdmin = (row) => {
+  router.push({ path: '/checkin/admin', query: { activityId: row.id } })
 }
 
 const fetchActivities = async () => {
@@ -390,6 +417,67 @@ const handleRollback = (log) => {
     logDrawer.value.visible = false
     fetchActivities()
   })
+}
+
+// 白名单管理
+const whitelistDialog = ref({
+  visible: false,
+  loading: false,
+  saving: false,
+  activityId: null,
+  allUsers: [],
+  selectedIds: [],
+  originalIds: []
+})
+
+const handleWhitelist = async (row) => {
+  whitelistDialog.value = {
+    visible: true,
+    loading: true,
+    saving: false,
+    activityId: row.id,
+    allUsers: [],
+    selectedIds: [],
+    originalIds: []
+  }
+  try {
+    const [usersRes, wlRes] = await Promise.all([
+      request.get('/users'),
+      getWhitelistUserIds(row.id)
+    ])
+    whitelistDialog.value.allUsers = usersRes.data.map(u => ({
+      id: u.id,
+      label: `${u.username} (ID:${u.id})`
+    }))
+    whitelistDialog.value.selectedIds = wlRes.data || []
+    whitelistDialog.value.originalIds = [...(wlRes.data || [])]
+  } catch (err) {
+    ElMessage.error('获取白名单数据失败')
+  } finally {
+    whitelistDialog.value.loading = false
+  }
+}
+
+const saveWhitelist = async () => {
+  whitelistDialog.value.saving = true
+  try {
+    const original = new Set(whitelistDialog.value.originalIds)
+    const current = new Set(whitelistDialog.value.selectedIds)
+    const toAdd = whitelistDialog.value.selectedIds.filter(id => !original.has(id))
+    const toRemove = whitelistDialog.value.originalIds.filter(id => !current.has(id))
+    if (toAdd.length > 0) {
+      await addWhitelistUsers(whitelistDialog.value.activityId, toAdd)
+    }
+    if (toRemove.length > 0) {
+      await removeWhitelistUsers(whitelistDialog.value.activityId, toRemove)
+    }
+    ElMessage.success('白名单已更新')
+    whitelistDialog.value.visible = false
+  } catch (err) {
+    ElMessage.error('保存白名单失败')
+  } finally {
+    whitelistDialog.value.saving = false
+  }
 }
 
 const handleSizeChange = (val) => {

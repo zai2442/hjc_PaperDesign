@@ -292,4 +292,34 @@ public class ActivityPublicControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
+
+    @Test
+    public void testPublicListWithFiltersAndSorting() throws Exception {
+        String ownerToken = TestTokenUtil.login(mockMvc, objectMapper, "owner1", "123456");
+        String counselorToken = TestTokenUtil.login(mockMvc, objectMapper, "counselor1", "123456");
+
+        Long id1 = createDraft(ownerToken, "t-sort-1");
+        Long id2 = createDraft(ownerToken, "t-sort-2");
+
+        submitAndApproveOnline(id1, ownerToken, counselorToken);
+        submitAndApproveOnline(id2, ownerToken, counselorToken);
+
+        mockMvc.perform(get("/api/v1/activities")
+                        .param("statusCategory", "ENROLLING")
+                        .param("sortBy", "HOTTEST"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        
+        mockMvc.perform(get("/api/v1/activities")
+                        .param("statusCategory", "IN_PROGRESS")
+                        .param("sortBy", "UPCOMING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        
+        mockMvc.perform(get("/api/v1/activities")
+                        .param("statusCategory", "ENDED")
+                        .param("sortBy", "LATEST"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
 }

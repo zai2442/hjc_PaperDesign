@@ -36,9 +36,11 @@ public class ActivityPublicController {
                                               @RequestParam(required = false) String type,
                                               @RequestParam(required = false) String startTime,
                                               @RequestParam(required = false) String endTime,
-                                              @RequestParam(defaultValue = "false") boolean hasSpots) {
-        log.info("Public activity query: page={}, size={}, keyword={}, type={}, startTime={}, endTime={}, hasSpots={}",
-                page, size, keyword, type, startTime, endTime, hasSpots);
+                                              @RequestParam(defaultValue = "false") boolean hasSpots,
+                                              @RequestParam(required = false) String statusCategory,
+                                              @RequestParam(required = false) String sortBy) {
+        log.info("Public activity query: page={}, size={}, keyword={}, type={}, startTime={}, endTime={}, hasSpots={}, statusCategory={}, sortBy={}",
+                page, size, keyword, type, startTime, endTime, hasSpots, statusCategory, sortBy);
         long p = Math.max(1, page);
         long s = Math.min(50, Math.max(1, size));
         LocalDateTime now = LocalDateTime.now();
@@ -63,8 +65,29 @@ public class ActivityPublicController {
         if (hasSpots) {
             qw.gt(Activity::getStockAvailable, 0);
         }
+
+        if ("ENROLLING".equals(statusCategory)) {
+            // 报名中: activity not yet started (start_time is in the future or NULL)
+            qw.and(w -> w.isNull(Activity::getStartTime).or().gt(Activity::getStartTime, now));
+        } else if ("IN_PROGRESS".equals(statusCategory)) {
+            // 进行中: now is between start_time and end_time
+            qw.isNotNull(Activity::getStartTime)
+              .le(Activity::getStartTime, now)
+              .and(w -> w.isNull(Activity::getEndTime).or().ge(Activity::getEndTime, now));
+        } else if ("ENDED".equals(statusCategory)) {
+            // 已结束: end_time has passed
+            qw.isNotNull(Activity::getEndTime)
+              .lt(Activity::getEndTime, now);
+        }
         
-        qw.orderByDesc(Activity::getPublishAt).orderByDesc(Activity::getId);
+        if ("HOTTEST".equals(sortBy)) {
+            qw.last("ORDER BY (stock_total - stock_available) DESC, id DESC");
+        } else if ("UPCOMING".equals(sortBy)) {
+            qw.orderByAsc(Activity::getStartTime).orderByDesc(Activity::getId);
+        } else {
+            // LATEST or default
+            qw.orderByDesc(Activity::getPublishAt).orderByDesc(Activity::getId);
+        }
 
         Page<Activity> mpPage = new Page<>(p, s);
         Page<Activity> result = activityMapper.selectPage(mpPage, qw);

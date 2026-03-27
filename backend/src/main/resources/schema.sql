@@ -2,6 +2,8 @@ CREATE TABLE IF NOT EXISTS sys_user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    nickname VARCHAR(100),
+    avatar_url VARCHAR(1024),
     email VARCHAR(100) UNIQUE,
     phone VARCHAR(20),
     status TINYINT DEFAULT 1 COMMENT '1:active, 0:disabled',
@@ -173,4 +175,17 @@ CREATE TABLE IF NOT EXISTS act_track_event (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     KEY idx_track_event_name_time (event_name, id),
     KEY idx_track_event_activity (activity_id, id)
+);
+
+CREATE TABLE IF NOT EXISTS act_check_in_record (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    activity_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    check_in_time DATETIME NOT NULL,
+    type VARCHAR(20) DEFAULT 'SCAN',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_checkin (activity_id, user_id),
+    KEY idx_checkin_activity (activity_id, id),
+    KEY idx_checkin_user (user_id, id)
 );

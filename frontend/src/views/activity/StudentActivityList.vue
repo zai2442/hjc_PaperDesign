@@ -1,5 +1,12 @@
 <template>
   <div class="student-activity-list">
+    <el-tabs v-model="filters.statusCategory" @tab-click="onTabClick" class="status-tabs">
+      <el-tab-pane label="全部活动" name="" />
+      <el-tab-pane label="报名中" name="ENROLLING" />
+      <el-tab-pane label="进行中" name="IN_PROGRESS" />
+      <el-tab-pane label="已结束" name="ENDED" />
+    </el-tabs>
+
     <!-- Filters -->
     <el-card class="filter-card">
       <el-form :inline="true" :model="filters">
@@ -26,12 +33,20 @@
             clearable
           />
         </el-form-item>
+        <el-form-item label="排序方式">
+          <el-select v-model="filters.sortBy" @change="handleSearch" style="width: 120px;">
+            <el-option label="最新发布" value="LATEST" />
+            <el-option label="最热活动" value="HOTTEST" />
+            <el-option label="即将开始" value="UPCOMING" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
-          <el-checkbox v-model="filters.hasSpots">仅看有名额</el-checkbox>
+          <el-checkbox v-model="filters.hasSpots" @change="handleSearch">仅看有名额</el-checkbox>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="resetFilters">重置</el-button>
+          <el-button type="success" @click="$router.push('/checkin/scan')">扫码签到</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -43,7 +58,7 @@
           <el-card class="activity-card" shadow="hover">
             <template #header>
               <div class="card-header">
-                <h3>{{ item.title }}</h3>
+                <h3 class="clickable-title" @click="goToDetail(item.id)">{{ item.title }}</h3>
                 <el-tag :type="item.stockAvailable > 0 ? 'success' : 'danger'">
                   {{ item.stockAvailable > 0 ? '剩余 ' + item.stockAvailable : '名额已满' }}
                 </el-tag>
@@ -103,15 +118,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import request from '../../utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Calendar, Location, User } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
 
-const filters = ref({
+const filters = reactive({
   keyword: '',
   type: '',
-  hasSpots: false
+  hasSpots: false,
+  statusCategory: '',
+  sortBy: 'LATEST'
 })
 const dateRange = ref([])
 const page = ref(1)
@@ -119,14 +137,18 @@ const size = ref(12)
 const total = ref(0)
 const activityList = ref([])
 
+const router = useRouter()
+
 const loadData = async () => {
   try {
     const params = {
       page: page.value,
       size: size.value,
-      keyword: filters.value.keyword || undefined,
-      type: filters.value.type || undefined,
-      hasSpots: filters.value.hasSpots,
+      keyword: filters.keyword || undefined,
+      type: filters.type || undefined,
+      hasSpots: filters.hasSpots,
+      statusCategory: filters.statusCategory || undefined,
+      sortBy: filters.sortBy || undefined
     }
     if (dateRange.value && dateRange.value.length === 2) {
       params.startTime = dateRange.value[0]
@@ -145,10 +167,25 @@ const handleSearch = () => {
   loadData()
 }
 
+const onTabClick = (tab) => {
+  filters.statusCategory = tab.props.name
+  page.value = 1
+  loadData()
+}
+
 const resetFilters = () => {
-  filters.value = { keyword: '', type: '', hasSpots: false }
+  filters.keyword = ''
+  filters.type = ''
+  filters.hasSpots = false
+  filters.statusCategory = ''
+  filters.sortBy = 'LATEST'
   dateRange.value = []
-  handleSearch()
+  page.value = 1
+  loadData()
+}
+
+const goToDetail = (id) => {
+  router.push(`/activity/detail/${id}`)
 }
 
 const registerDialogVisible = ref(false)
@@ -211,6 +248,21 @@ onMounted(() => {
   flex: 1;
   margin-right: 10px;
 }
+.clickable-title {
+  margin: 0;
+  font-size: 16px;
+  cursor: pointer;
+  color: #303133;
+  transition: color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  margin-right: 10px;
+}
+.clickable-title:hover {
+  color: #409EFF;
+}
 .card-body {
   height: 120px;
   display: flex;
@@ -237,6 +289,9 @@ onMounted(() => {
 .info-item .el-icon {
   margin-right: 5px;
 }
+.info-item span {
+  font-size: 14px;
+}
 .card-footer {
   margin-top: 15px;
 }
@@ -245,4 +300,11 @@ onMounted(() => {
   justify-content: flex-end;
   margin-top: 20px;
 }
+.status-tabs {
+  margin-bottom: 10px;
+  background: white;
+  padding: 0 20px;
+  border-radius: 4px;
+}
 </style>
+```
