@@ -10,13 +10,14 @@ import com.campus.activity.activity.dto.ActivityVariantUpsertRequest;
 import com.campus.activity.activity.dto.ActivityWorkflowRequest;
 import com.campus.activity.activity.entity.Activity;
 import com.campus.activity.activity.entity.ActivityChangeLog;
+import com.campus.activity.activity.dto.ActivityAdminListResponse;
 import com.campus.activity.common.PageResponse;
 
 public interface ActivityService extends IService<Activity> {
 
     Long create(ActivityCreateRequest req);
 
-    PageResponse<Activity> page(ActivityQueryRequest req);
+    PageResponse<ActivityAdminListResponse> page(ActivityQueryRequest req);
 
     byte[] exportCsv(ActivityQueryRequest req);
 

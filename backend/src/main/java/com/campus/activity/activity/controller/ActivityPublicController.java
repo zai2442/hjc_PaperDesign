@@ -13,7 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.campus.activity.activity.dto.ActivityPublicResponse;
 import com.campus.activity.activity.entity.Registration;
+import com.campus.activity.activity.entity.Tag;
 import com.campus.activity.activity.mapper.RegistrationMapper;
+import com.campus.activity.activity.mapper.TagMapper;
 import com.campus.activity.security.SecurityUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +37,7 @@ public class ActivityPublicController {
     private final ActivityMapper activityMapper;
     private final ActivityService activityService;
     private final RegistrationMapper registrationMapper;
+    private final TagMapper tagMapper;
 
     @GetMapping
     public Result<PageResponse<ActivityPublicResponse>> page(@RequestParam(defaultValue = "1") long page,
@@ -52,11 +55,19 @@ public class ActivityPublicController {
         long s = Math.min(50, Math.max(1, size));
         LocalDateTime now = LocalDateTime.now();
 
+        Long currentUserId = SecurityUtils.getUserId();
+        
         LambdaQueryWrapper<Activity> qw = new LambdaQueryWrapper<>();
-        qw.eq(Activity::getStatus, STATUS_ONLINE)
-                .le(Activity::getPublishAt, now)
-                .and(w -> w.isNull(Activity::getOfflineAt).or().gt(Activity::getOfflineAt, now));
-                
+        // 公开列表逻辑：要求已发布且在发布期内；或者是活动创建者本人（用于预览稿件）
+        qw.and(w -> {
+            w.and(w2 -> w2.eq(Activity::getStatus, STATUS_ONLINE)
+                    .le(Activity::getPublishAt, now)
+                    .and(w3 -> w3.isNull(Activity::getOfflineAt).or().gt(Activity::getOfflineAt, now)));
+            if (currentUserId != null) {
+                w.or(w4 -> w4.eq(Activity::getCreatedBy, currentUserId));
+            }
+        });
+        
         if (keyword != null && !keyword.isBlank()) {
             qw.like(Activity::getTitle, keyword.trim());
         }
@@ -74,15 +85,21 @@ public class ActivityPublicController {
         }
 
         if ("ENROLLING".equals(statusCategory)) {
-            // 报名中: activity not yet started (start_time is in the future or NULL)
-            qw.and(w -> w.isNull(Activity::getStartTime).or().gt(Activity::getStartTime, now));
+            // 报名中: 
+            // 1. 如果设置了报名结束时间，则当前时间必须在报名结束时间之前
+            // 2. 同时活动本身尚未结束
+            qw.and(w -> w.isNull(Activity::getRegEndTime).or().gt(Activity::getRegEndTime, now))
+              .and(w -> w.isNull(Activity::getEndTime).or().gt(Activity::getEndTime, now));
+              
+            // 可选：如果设置了报名开始时间，则当前时间必须在报名开始时间之后
+            qw.and(w -> w.isNull(Activity::getRegStartTime).or().le(Activity::getRegStartTime, now));
         } else if ("IN_PROGRESS".equals(statusCategory)) {
-            // 进行中: now is between start_time and end_time
+            // 进行中: 活动已经开始且尚未结束
             qw.isNotNull(Activity::getStartTime)
               .le(Activity::getStartTime, now)
               .and(w -> w.isNull(Activity::getEndTime).or().ge(Activity::getEndTime, now));
         } else if ("ENDED".equals(statusCategory)) {
-            // 已结束: end_time has passed
+            // 已结束: 活动结束时间已过
             qw.isNotNull(Activity::getEndTime)
               .lt(Activity::getEndTime, now);
         }
@@ -91,6 +108,8 @@ public class ActivityPublicController {
             qw.last("ORDER BY (stock_total - stock_available) DESC, id DESC");
         } else if ("UPCOMING".equals(sortBy)) {
             qw.orderByAsc(Activity::getStartTime).orderByDesc(Activity::getId);
+        } else if ("CATEGORY".equals(sortBy)) {
+            qw.orderByAsc(Activity::getContentType).orderByDesc(Activity::getId);
         } else {
             // LATEST or default
             qw.orderByDesc(Activity::getPublishAt).orderByDesc(Activity::getId);
@@ -99,14 +118,13 @@ public class ActivityPublicController {
         Page<Activity> mpPage = new Page<>(p, s);
         Page<Activity> result = activityMapper.selectPage(mpPage, qw);
         
-        Long userId = SecurityUtils.getUserId();
         List<ActivityPublicResponse> records = result.getRecords().stream().map(a -> {
             String regStatus = null;
             Long regId = null;
-            if (userId != null) {
+            if (currentUserId != null) {
                 Registration reg = registrationMapper.selectOne(new LambdaQueryWrapper<Registration>()
                         .eq(Registration::getActivityId, a.getId())
-                        .eq(Registration::getUserId, userId)
+                        .eq(Registration::getUserId, currentUserId)
                         .orderByDesc(Registration::getId)
                         .last("limit 1"));
                 if (reg != null) {
@@ -114,7 +132,8 @@ public class ActivityPublicController {
                     regId = reg.getId();
                 }
             }
-            return ActivityPublicResponse.from(a, regStatus, regId);
+            List<Tag> tags = tagMapper.findTagsByActivityId(a.getId());
+            return ActivityPublicResponse.from(a, regStatus, regId, tags);
         }).collect(Collectors.toList());
 
         return Result.success(PageResponse.of(p, s, result.getTotal(), records));
@@ -126,18 +145,22 @@ public class ActivityPublicController {
         if (a == null) {
             return Result.error(404, "Activity not found");
         }
-        if (!STATUS_ONLINE.equals(a.getStatus())) {
-            return Result.error(404, "Activity not found");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        if (a.getPublishAt() != null && a.getPublishAt().isAfter(now)) {
-            return Result.error(404, "Activity not found");
-        }
-        if (a.getOfflineAt() != null && !a.getOfflineAt().isAfter(now)) {
-            return Result.error(404, "Activity not found");
-        }
         
         Long userId = SecurityUtils.getUserId();
+        boolean isCreator = userId != null && userId.equals(a.getCreatedBy());
+        
+        if (!isCreator) {
+            if (!STATUS_ONLINE.equals(a.getStatus())) {
+                return Result.error(404, "Activity not found");
+            }
+            LocalDateTime now = LocalDateTime.now();
+            if (a.getPublishAt() != null && a.getPublishAt().isAfter(now)) {
+                return Result.error(404, "Activity not found");
+            }
+            if (a.getOfflineAt() != null && !a.getOfflineAt().isAfter(now)) {
+                return Result.error(404, "Activity not found");
+            }
+        }
         String regStatus = null;
         Long regId = null;
         if (userId != null) {
@@ -151,7 +174,8 @@ public class ActivityPublicController {
                 regId = reg.getId();
             }
         }
-        return Result.success(ActivityPublicResponse.from(a, regStatus, regId));
+        List<Tag> tags = tagMapper.findTagsByActivityId(id);
+        return Result.success(ActivityPublicResponse.from(a, regStatus, regId, tags));
     }
 
     @PostMapping("/{id}/reserve")

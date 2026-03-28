@@ -29,13 +29,16 @@
 
     <el-table :data="activities" v-loading="loading" border style="width: 100%; margin-top: 20px" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" />
-      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column prop="id" label="ID" width="80" sortable />
       <el-table-column prop="title" label="活动名称" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="contentType" label="分类" width="120" />
       <el-table-column label="标签" width="150">
         <template #default="{ row }">
-          <!-- 实际上这里需要后端在列表接口也返回标签，或者前端单独维护一个映射 -->
-          <!-- 暂时显示后端返回的 channels 字段作为示例 -->
-          <el-tag v-if="row.channels" size="small" type="info">{{ row.channels }}</el-tag>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px">
+            <el-tag v-for="tag in row.tags" :key="tag.id" :color="tag.color" size="small" :style="{ color: 'white', border: 'none' }">
+              {{ tag.name }}
+            </el-tag>
+          </div>
         </template>
       </el-table-column>
       <el-table-column prop="location" label="地点" width="150" show-overflow-tooltip />
@@ -60,7 +63,6 @@
             <el-button link type="success" @click="handleCheckInAdmin(row)" v-if="canManageRegistrations && row.status === 'ONLINE'">签到</el-button>
             <el-button link type="warning" @click="handleWhitelist(row)" v-if="canManageRegistrations && row.whitelistEnabled === 1">白名单</el-button>
             <el-button link type="info" @click="goSystemLogs(row)">日志</el-button>
-            <el-button link type="info" @click="handleShowLogs(row)">变更</el-button>
             <el-button link type="danger" @click="handleDelete(row)" v-if="canAdmin">删除</el-button>
           </el-button-group>
         </template>
@@ -97,35 +99,6 @@
       </template>
     </el-dialog>
 
-    <!-- 操作日志抽屉 -->
-    <el-drawer v-model="logDrawer.visible" title="操作日志" size="600px">
-      <el-timeline style="margin: 20px">
-        <el-timeline-item
-          v-for="log in logDrawer.logs"
-          :key="log.id"
-          :timestamp="log.createdAt"
-          placement="top"
-        >
-          <el-card shadow="never">
-            <h4>{{ opLabelMap[log.opType] || log.opType }}</h4>
-            <p>操作人 ID: {{ log.operatorId }}</p>
-            <div v-if="log.diffData && log.diffData !== '{}'" style="margin-top: 10px">
-              <el-collapse>
-                <el-collapse-item title="查看变更详情">
-                  <pre class="diff-pre">{{ formatDiff(log.diffData) }}</pre>
-                </el-collapse-item>
-              </el-collapse>
-            </div>
-            <div style="margin-top: 10px">
-              <el-button size="small" type="primary" plain @click="handleRollback(log)">回滚到此版本前</el-button>
-            </div>
-          </el-card>
-        </el-timeline-item>
-      </el-timeline>
-      <div v-if="logDrawer.total > logDrawer.logs.length" style="text-align: center; margin: 20px">
-        <el-button link @click="loadMoreLogs">加载更多</el-button>
-      </div>
-    </el-drawer>
 
     <!-- 白名单管理对话框 -->
     <el-dialog v-model="whitelistDialog.visible" title="白名单管理" width="700px">
@@ -160,8 +133,6 @@ import {
   offlineActivity,
   batchOfflineActivities,
   batchDeleteActivities,
-  getActivityChangeLogs,
-  rollbackActivity,
   getWhitelistUserIds,
   addWhitelistUsers,
   removeWhitelistUsers
@@ -198,20 +169,6 @@ const statusTypeMap = {
   OFFLINE: 'info'
 }
 
-const opLabelMap = {
-  CREATE: '创建',
-  UPDATE: '更新',
-  DELETE: '删除',
-  SUBMIT_REVIEW: '提交审核',
-  WITHDRAW: '撤回审核',
-  APPROVE: '审核通过',
-  REJECT: '审核驳回',
-  OFFLINE: '手动下线',
-  SCHEDULE_PUBLISH: '定时发布',
-  SCHEDULE_OFFLINE: '定时下线',
-  ROLLBACK: '版本回滚',
-  ACTIVATE_VARIANT: '激活变体'
-}
 
 // 模拟权限判断
 const userRole = localStorage.getItem('user_role') || 'STUDENT'
@@ -373,56 +330,7 @@ const confirmAudit = async () => {
   fetchActivities()
 }
 
-// 日志相关
-const logDrawer = ref({
-  visible: false,
-  row: null,
-  logs: [],
-  total: 0,
-  page: 1
-})
 
-const handleShowLogs = async (row) => {
-  logDrawer.value = {
-    visible: true,
-    row,
-    logs: [],
-    total: 0,
-    page: 1
-  }
-  loadLogs()
-}
-
-const loadLogs = async () => {
-  const res = await getActivityChangeLogs(logDrawer.value.row.id, {
-    page: logDrawer.value.page,
-    size: 10
-  })
-  logDrawer.value.logs.push(...res.data.records)
-  logDrawer.value.total = res.data.total
-}
-
-const loadMoreLogs = () => {
-  logDrawer.value.page++
-  loadLogs()
-}
-
-const formatDiff = (diffData) => {
-  try {
-    return JSON.stringify(JSON.parse(diffData), null, 2)
-  } catch (e) {
-    return diffData
-  }
-}
-
-const handleRollback = (log) => {
-  ElMessageBox.confirm('确定要回滚到该操作之前的状态吗？', '回滚确认').then(async () => {
-    await rollbackActivity(log.activityId, log.id, logDrawer.value.row.version)
-    ElMessage.success('回滚成功')
-    logDrawer.value.visible = false
-    fetchActivities()
-  })
-}
 
 // 白名单管理
 const whitelistDialog = ref({
@@ -506,13 +414,5 @@ onMounted(() => {
 }
 .filter-card {
   margin-bottom: 20px;
-}
-.diff-pre {
-  background: #f5f7fa;
-  padding: 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  max-height: 200px;
-  overflow: auto;
 }
 </style>

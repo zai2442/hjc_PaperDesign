@@ -52,4 +52,7 @@ public class Registration {
 
     @TableField(exist = false)
     private String auditByName;
+
+    @TableField(exist = false)
+    private String username;
 }

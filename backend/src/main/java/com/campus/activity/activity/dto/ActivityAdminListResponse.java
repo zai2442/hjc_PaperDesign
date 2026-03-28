@@ -10,16 +10,12 @@ import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class ActivityPublicResponse extends Activity {
-    private String registrationStatus;
-    private Long registrationId;
+public class ActivityAdminListResponse extends Activity {
     private List<Tag> tags;
 
-    public static ActivityPublicResponse from(Activity activity, String status, Long regId, List<Tag> tags) {
-        ActivityPublicResponse resp = new ActivityPublicResponse();
+    public static ActivityAdminListResponse from(Activity activity, List<Tag> tags) {
+        ActivityAdminListResponse resp = new ActivityAdminListResponse();
         BeanUtils.copyProperties(activity, resp);
-        resp.setRegistrationStatus(status);
-        resp.setRegistrationId(regId);
         resp.setTags(tags);
         return resp;
     }

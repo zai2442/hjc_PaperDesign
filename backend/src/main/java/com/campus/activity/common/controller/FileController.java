@@ -39,22 +39,27 @@ public class FileController {
         if (ext != null && !ext.isBlank()) {
             name = name + "." + ext;
         }
-        File dir = new File(UPLOAD_DIR);
+        
+        // 使用绝对路径，避免由于工作目录不确定导致的问题
+        File dir = new File(System.getProperty("user.dir"), UPLOAD_DIR);
         if (!dir.exists()) {
             dir.mkdirs();
         }
+        
         File dest = new File(dir, name);
-        try {
-            file.transferTo(dest);
+        try (var is = file.getInputStream()) {
+            // Spring Boot 中推荐使用 Files.copy 或者使用绝对路径的 transferTo
+            Files.copy(is, dest.toPath());
         } catch (IOException e) {
-            throw new ApiException(500, HttpStatus.INTERNAL_SERVER_ERROR, "upload failed");
+            // 记录异常便于后续排查（如果有日志查看能力）
+            throw new ApiException(500, HttpStatus.INTERNAL_SERVER_ERROR, "upload failed: " + e.getMessage());
         }
         return Result.success("/api/v1/files/" + name);
     }
 
     @GetMapping("/api/v1/files/{name}")
     public ResponseEntity<Resource> get(@PathVariable String name) {
-        File f = new File(UPLOAD_DIR, name);
+        File f = new File(new File(System.getProperty("user.dir"), UPLOAD_DIR), name);
         if (!f.exists() || !f.isFile()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }

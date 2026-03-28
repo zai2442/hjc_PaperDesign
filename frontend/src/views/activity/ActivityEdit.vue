@@ -60,6 +60,16 @@
               </el-select>
             </el-form-item>
 
+            <el-form-item label="活动分类" prop="contentType">
+              <el-select v-model="form.contentType" placeholder="选择分类" style="width: 100%">
+                <el-option label="学术讲座" value="学术讲座" />
+                <el-option label="社团活动" value="社团活动" />
+                <el-option label="体育赛事" value="体育赛事" />
+                <el-option label="文艺演出" value="文艺演出" />
+                <el-option label="志愿服务" value="志愿服务" />
+              </el-select>
+            </el-form-item>
+
             <el-form-item label="活动地点" prop="location">
               <el-input v-model="form.location" placeholder="活动举办地点" />
             </el-form-item>
@@ -204,7 +214,7 @@ const form = ref({
   summary: '',
   coverUrl: '',
   content: '',
-  contentType: 'HTML',
+  contentType: '学术讲座',
   location: '',
   startTime: '',
   endTime: '',

@@ -201,6 +201,13 @@ const getEventsForDate = (date) => {
       if (!r.activityStartTime) return false
       const start = r.activityStartTime.substring(0, 10)
       const end = r.activityEndTime ? r.activityEndTime.substring(0, 10) : start
+      
+      // 用户反馈: 已取消/已拒绝状态的活动，显示到活动结束时间即可 (即已结束的取消活动不再显示)
+      if (r.status === 'CANCELED' || r.status === 'REJECTED') {
+        const today = new Date().toISOString().substring(0, 10)
+        if (end < today) return false
+      }
+      
       return dateStr >= start && dateStr <= end
     })
     .map(r => ({

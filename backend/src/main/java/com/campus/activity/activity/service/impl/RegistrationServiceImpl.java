@@ -276,6 +276,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         Page<Registration> result = registrationMapper.selectPage(mpPage, qw);
         fillActivityDetails(result.getRecords());
         fillAuditorDetails(result.getRecords());
+        fillUserDetails(result.getRecords());
         return PageResponse.of(p, s, result.getTotal(), result.getRecords());
     }
 
@@ -329,6 +330,29 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         }
     }
 
+    private void fillUserDetails(List<Registration> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Long> userIds = records.stream()
+                .map(Registration::getUserId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        if (userIds.isEmpty()) {
+            return;
+        }
+        List<User> users = userMapper.selectBatchIds(userIds);
+        Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+        for (Registration reg : records) {
+            User user = userMap.get(reg.getUserId());
+            if (user != null) {
+                reg.setUsername(user.getUsername());
+            }
+        }
+    }
+
     @Override
     public Registration getDetail(Long id) {
         Registration reg = registrationMapper.selectById(id);
@@ -337,6 +361,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         }
         fillActivityDetails(List.of(reg));
         fillAuditorDetails(List.of(reg));
+        fillUserDetails(List.of(reg));
         Long userId = SecurityUtils.getUserId();
         if (userId != null && userId.equals(reg.getUserId())) {
             return reg;
@@ -408,6 +433,7 @@ public class RegistrationServiceImpl extends ServiceImpl<RegistrationMapper, Reg
         Page<Registration> result = registrationMapper.selectPage(mpPage, qw);
         fillActivityDetails(result.getRecords());
         fillAuditorDetails(result.getRecords());
+        fillUserDetails(result.getRecords());
         return PageResponse.of(p, s, result.getTotal(), result.getRecords());
     }
 

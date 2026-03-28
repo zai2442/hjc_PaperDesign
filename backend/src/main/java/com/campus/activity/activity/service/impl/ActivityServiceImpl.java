@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.campus.activity.activity.dto.ActivityAdminListResponse;
 import com.campus.activity.activity.dto.ActivityAdminResponse;
 import com.campus.activity.activity.dto.ActivityCreateRequest;
 import com.campus.activity.activity.dto.ActivityQueryRequest;
@@ -16,6 +17,7 @@ import com.campus.activity.activity.entity.ActivityChangeLog;
 import com.campus.activity.activity.entity.ActivityVariant;
 import com.campus.activity.activity.entity.ActivityWhitelist;
 import com.campus.activity.activity.entity.Registration;
+import com.campus.activity.activity.entity.Tag;
 import com.campus.activity.activity.mapper.ActivityChangeLogMapper;
 import com.campus.activity.activity.mapper.ActivityMapper;
 import com.campus.activity.activity.mapper.ActivityVariantMapper;
@@ -212,14 +214,20 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
     }
 
     @Override
-    public PageResponse<Activity> page(ActivityQueryRequest req) {
+    public PageResponse<ActivityAdminListResponse> page(ActivityQueryRequest req) {
         long page = Math.max(1, req.getPage());
         long size = Math.min(200, Math.max(1, req.getSize()));
         LambdaQueryWrapper<Activity> qw = buildAdminQuery(req);
 
         Page<Activity> mpPage = new Page<>(page, size);
         Page<Activity> result = activityMapper.selectPage(mpPage, qw);
-        return PageResponse.of(page, size, result.getTotal(), result.getRecords());
+        
+        List<ActivityAdminListResponse> records = result.getRecords().stream().map((Activity a) -> {
+            List<Tag> tags = tagMapper.findTagsByActivityId(a.getId());
+            return ActivityAdminListResponse.from(a, tags);
+        }).collect(Collectors.toList());
+
+        return PageResponse.of(page, size, result.getTotal(), records);
     }
 
     private LambdaQueryWrapper<Activity> buildAdminQuery(ActivityQueryRequest req) {
@@ -329,9 +337,16 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         patch.setOfflineAt(req.getOfflineAt());
 
         if (req.getStockTotal() != null) {
-            int total = Math.max(0, req.getStockTotal());
-            patch.setStockTotal(total);
-            patch.setStockAvailable(total);
+            int newTotal = Math.max(0, req.getStockTotal());
+            int oldTotal = before.getStockTotal() == null ? 0 : before.getStockTotal();
+            int oldAvailable = before.getStockAvailable() == null ? 0 : before.getStockAvailable();
+            
+            // 计算名额变动: 新可用 = 旧可用 + (新总数 - 旧总数)
+            int diff = newTotal - oldTotal;
+            int newAvailable = Math.max(0, oldAvailable + diff);
+            
+            patch.setStockTotal(newTotal);
+            patch.setStockAvailable(newAvailable);
         }
 
         Long userId = SecurityUtils.getUserId();
@@ -342,6 +357,10 @@ public class ActivityServiceImpl extends ServiceImpl<ActivityMapper, Activity> i
         if (!ok) {
             throw new ApiException(409, HttpStatus.CONFLICT, "Version conflict");
         }
+        
+        // 清理缓存 (包括详情和库存)
+        evictActivityDetail(id);
+        stringRedisTemplate.delete(cacheKeyStock(id));
 
         if (req.getTagIds() != null) {
             activityMapper.deleteActivityTags(id);

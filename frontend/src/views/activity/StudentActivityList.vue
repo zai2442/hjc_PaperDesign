@@ -14,7 +14,7 @@
           <el-input v-model="filters.keyword" placeholder="活动标题/简介" clearable />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="filters.type" placeholder="全部分类" clearable>
+          <el-select v-model="filters.type" placeholder="全部分类" @change="handleSearch" clearable>
             <el-option label="学术讲座" value="学术讲座" />
             <el-option label="社团活动" value="社团活动" />
             <el-option label="体育赛事" value="体育赛事" />
@@ -38,6 +38,7 @@
             <el-option label="最新发布" value="LATEST" />
             <el-option label="最热活动" value="HOTTEST" />
             <el-option label="即将开始" value="UPCOMING" />
+            <el-option label="按分类排序" value="CATEGORY" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -63,6 +64,11 @@
                   {{ item.stockAvailable > 0 ? '剩余 ' + item.stockAvailable : '名额已满' }}
                 </el-tag>
               </div>
+              <div class="card-tags" v-if="item.tags && item.tags.length">
+                <el-tag v-for="tag in item.tags" :key="tag.id" :color="tag.color" size="small" class="tag-item" effect="light" :style="{ color: 'white', border: 'none' }">
+                  {{ tag.name }}
+                </el-tag>
+              </div>
             </template>
             <div class="card-body">
               <p class="summary">{{ item.summary || '暂无简介' }}</p>
@@ -76,7 +82,7 @@
               </div>
               <div class="info-item">
                 <el-icon><User /></el-icon>
-                <span>名额: {{ item.stockTotal - item.stockAvailable }}/{{ item.stockTotal }}</span>
+                <span>名额: {{ Math.max(0, item.stockTotal - item.stockAvailable) }}/{{ item.stockTotal }}</span>
               </div>
             </div>
             <div class="card-footer">
@@ -350,6 +356,21 @@ onMounted(() => {
   background: white;
   padding: 0 20px;
   border-radius: 4px;
+}
+.card-tags {
+  margin-top: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.tags-container {
+  margin-bottom: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tag-item {
+  font-weight: bold;
 }
 </style>
 ```

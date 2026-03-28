@@ -1,5 +1,6 @@
 package com.campus.activity.activity.controller;
 
+import com.campus.activity.activity.dto.ActivityAdminListResponse;
 import com.campus.activity.activity.dto.ActivityAdminResponse;
 import com.campus.activity.activity.dto.ActivityCreateRequest;
 import com.campus.activity.activity.dto.ActivityQueryRequest;
@@ -38,7 +39,7 @@ public class ActivityAdminController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','COUNSELOR','CLUB_OWNER')")
-    public Result<PageResponse<Activity>> page(ActivityQueryRequest req) {
+    public Result<PageResponse<ActivityAdminListResponse>> page(ActivityQueryRequest req) {
         return Result.success(activityService.page(req));
     }
 

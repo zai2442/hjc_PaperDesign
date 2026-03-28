@@ -11,6 +11,12 @@
       <el-col :span="16">
         <el-card shadow="hover" class="main-card">
           <h1 class="activity-title">{{ activity.title }}</h1>
+          <p class="summary">{{ activity.summary }}</p>
+          <div class="tags-container" v-if="activity.tags && activity.tags.length">
+            <el-tag v-for="tag in activity.tags" :key="tag.id" :color="tag.color" size="small" class="tag-item" effect="light" :style="{ color: 'white', border: 'none' }">
+              {{ tag.name }}
+            </el-tag>
+          </div>
           <div class="activity-meta">
             <el-tag style="margin-right: 10px">{{ activity.contentType }}</el-tag>
             <span class="meta-item"><el-icon><Calendar /></el-icon> 发布时间: {{ formatDate(activity.publishAt) }}</span>
@@ -45,7 +51,7 @@
             <div class="info-item">
               <label><el-icon><User /></el-icon> 招募名额</label>
               <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span>{{ activity.stockTotal - activity.stockAvailable }} / {{ activity.stockTotal }} 人</span>
+                <span>{{ Math.max(0, activity.stockTotal - activity.stockAvailable) }} / {{ activity.stockTotal }} 人</span>
                 <el-tag :type="activity.stockAvailable > 0 ? 'success' : 'danger'">
                   {{ activity.stockAvailable > 0 ? '剩余 ' + activity.stockAvailable : '名额已满' }}
                 </el-tag>
