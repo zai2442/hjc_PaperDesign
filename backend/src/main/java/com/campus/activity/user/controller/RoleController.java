@@ -48,7 +48,11 @@ public class RoleController {
     @PostMapping("/assign")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public Result<Void> assignRoles(@RequestBody UserRoleAssignDto dto) {
-        roleService.assignRolesToUser(dto.getUserId(), dto.getRoleIds());
+        if (dto.getUserIds() != null && !dto.getUserIds().isEmpty()) {
+            roleService.assignRolesToUsers(dto.getUserIds(), dto.getRoleIds());
+        } else if (dto.getUserId() != null) {
+            roleService.assignRolesToUser(dto.getUserId(), dto.getRoleIds());
+        }
         return Result.success(null);
     }
 

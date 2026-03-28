@@ -10,7 +10,6 @@
             <el-option label="草稿" value="DRAFT" />
             <el-option label="待审核" value="PENDING_REVIEW" />
             <el-option label="被驳回" value="REJECTED" />
-            <el-option label="已过审" value="APPROVED" />
             <el-option label="已发布" value="ONLINE" />
             <el-option label="已结束" value="OFFLINE" />
           </el-select>

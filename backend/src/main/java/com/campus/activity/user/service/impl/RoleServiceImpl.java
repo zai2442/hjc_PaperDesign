@@ -45,6 +45,17 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
 
     @Override
     @Transactional
+    public void assignRolesToUsers(List<Long> userIds, List<Long> roleIds) {
+        if (userIds == null || userIds.isEmpty() || roleIds == null || roleIds.isEmpty()) {
+            return;
+        }
+        for (Long userId : userIds) {
+            assignRolesToUser(userId, roleIds);
+        }
+    }
+
+    @Override
+    @Transactional
     public void removeRolesFromUser(Long userId, List<Long> roleIds) {
         if (ADMIN_USER_ID == userId) {
             return; // System admin roles are fixed

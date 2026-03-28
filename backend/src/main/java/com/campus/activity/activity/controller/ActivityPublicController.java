@@ -48,9 +48,10 @@ public class ActivityPublicController {
                                               @RequestParam(required = false) String endTime,
                                               @RequestParam(defaultValue = "false") boolean hasSpots,
                                               @RequestParam(required = false) String statusCategory,
+                                              @RequestParam(required = false) String registrationStatus,
                                               @RequestParam(required = false) String sortBy) {
-        log.info("Public activity query: page={}, size={}, keyword={}, type={}, startTime={}, endTime={}, hasSpots={}, statusCategory={}, sortBy={}",
-                page, size, keyword, type, startTime, endTime, hasSpots, statusCategory, sortBy);
+        log.info("Public activity query: page={}, size={}, keyword={}, type={}, startTime={}, endTime={}, hasSpots={}, statusCategory={}, registrationStatus={}, sortBy={}",
+                page, size, keyword, type, startTime, endTime, hasSpots, statusCategory, registrationStatus, sortBy);
         long p = Math.max(1, page);
         long s = Math.min(50, Math.max(1, size));
         LocalDateTime now = LocalDateTime.now();
@@ -86,13 +87,15 @@ public class ActivityPublicController {
 
         if ("ENROLLING".equals(statusCategory)) {
             // 报名中: 
-            // 1. 如果设置了报名结束时间，则当前时间必须在报名结束时间之前
-            // 2. 同时活动本身尚未结束
-            qw.and(w -> w.isNull(Activity::getRegEndTime).or().gt(Activity::getRegEndTime, now))
-              .and(w -> w.isNull(Activity::getEndTime).or().gt(Activity::getEndTime, now));
-              
-            // 可选：如果设置了报名开始时间，则当前时间必须在报名开始时间之后
-            qw.and(w -> w.isNull(Activity::getRegStartTime).or().le(Activity::getRegStartTime, now));
+            // 如果用户已登录，按要求仅显示该用户待审核(PENDING)的活动
+            // 如果用户未登录，则显示处于报名期内的活动
+            if (currentUserId != null) {
+                qw.inSql(Activity::getId, "SELECT activity_id FROM act_registration WHERE user_id = " + currentUserId + " AND status = 'PENDING'");
+            } else {
+                qw.and(w -> w.isNull(Activity::getRegEndTime).or().gt(Activity::getRegEndTime, now))
+                  .and(w -> w.isNull(Activity::getEndTime).or().gt(Activity::getEndTime, now));
+                qw.and(w -> w.isNull(Activity::getRegStartTime).or().le(Activity::getRegStartTime, now));
+            }
         } else if ("IN_PROGRESS".equals(statusCategory)) {
             // 进行中: 活动已经开始且尚未结束
             qw.isNotNull(Activity::getStartTime)
@@ -102,6 +105,10 @@ public class ActivityPublicController {
             // 已结束: 活动结束时间已过
             qw.isNotNull(Activity::getEndTime)
               .lt(Activity::getEndTime, now);
+        }
+
+        if (registrationStatus != null && !registrationStatus.isBlank() && currentUserId != null) {
+            qw.inSql(Activity::getId, "SELECT activity_id FROM act_registration WHERE user_id = " + currentUserId + " AND status = '" + registrationStatus.trim() + "'");
         }
         
         if ("HOTTEST".equals(sortBy)) {

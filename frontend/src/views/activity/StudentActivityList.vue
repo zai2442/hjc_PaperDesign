@@ -2,7 +2,6 @@
   <div class="student-activity-list">
     <el-tabs v-model="filters.statusCategory" @tab-click="onTabClick" class="status-tabs">
       <el-tab-pane label="全部活动" name="" />
-      <el-tab-pane label="报名中" name="ENROLLING" />
       <el-tab-pane label="进行中" name="IN_PROGRESS" />
       <el-tab-pane label="已结束" name="ENDED" />
     </el-tabs>
@@ -13,6 +12,7 @@
         <el-form-item label="关键字">
           <el-input v-model="filters.keyword" placeholder="活动标题/简介" clearable />
         </el-form-item>
+        <!--
         <el-form-item label="类型">
           <el-select v-model="filters.type" placeholder="全部分类" @change="handleSearch" clearable>
             <el-option label="学术讲座" value="学术讲座" />
@@ -22,6 +22,7 @@
             <el-option label="志愿服务" value="志愿服务" />
           </el-select>
         </el-form-item>
+        -->
         <el-form-item label="时间">
           <el-date-picker
             v-model="dateRange"
