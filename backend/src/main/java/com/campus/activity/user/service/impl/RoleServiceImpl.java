@@ -27,14 +27,15 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     @Override
     @Transactional
     public void assignRolesToUser(Long userId, List<Long> roleIds) {
-        if (ADMIN_USER_ID == userId) {
+        if (userId != null && userId.equals(ADMIN_USER_ID)) {
             return; // System admin roles are fixed
         }
-        if (roleIds == null || roleIds.isEmpty()) {
-            return;
-        }
-        for (Long roleId : roleIds) {
-            if (userRoleMapper.selectCount(new QueryWrapper<UserRole>().eq("user_id", userId).eq("role_id", roleId)) == 0) {
+        
+        // Synchronize roles: remove existing and add new
+        userRoleMapper.delete(new QueryWrapper<UserRole>().eq("user_id", userId));
+        
+        if (roleIds != null && !roleIds.isEmpty()) {
+            for (Long roleId : roleIds) {
                 UserRole ur = new UserRole();
                 ur.setUserId(userId);
                 ur.setRoleId(roleId);
@@ -50,7 +51,18 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
             return;
         }
         for (Long userId : userIds) {
-            assignRolesToUser(userId, roleIds);
+            if (userId != null && userId.equals(ADMIN_USER_ID)) {
+                continue;
+            }
+            // Additive logic for batch assignment: only add missing roles
+            for (Long roleId : roleIds) {
+                if (userRoleMapper.selectCount(new QueryWrapper<UserRole>().eq("user_id", userId).eq("role_id", roleId)) == 0) {
+                    UserRole ur = new UserRole();
+                    ur.setUserId(userId);
+                    ur.setRoleId(roleId);
+                    userRoleMapper.insert(ur);
+                }
+            }
         }
     }
 

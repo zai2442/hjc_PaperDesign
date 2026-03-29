@@ -1,5 +1,6 @@
 <template>
   <div class="activity-list-container">
+    <el-page-header content="活动管理列表" style="margin-bottom: 20px" @back="goBack" />
     <el-card class="filter-card">
       <el-form :inline="true" :model="queryForm">
         <el-form-item label="活动名称">
@@ -139,6 +140,10 @@ import {
 import request from '../../utils/request'
 
 const router = useRouter()
+
+const goBack = () => {
+  router.back()
+}
 const loading = ref(false)
 const activities = ref([])
 const total = ref(0)

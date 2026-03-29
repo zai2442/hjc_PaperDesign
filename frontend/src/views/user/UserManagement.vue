@@ -1,9 +1,10 @@
 <template>
   <div class="user-management">
+    <el-page-header content="用户角色管理" style="margin-bottom: 20px" @back="goBack" />
     <el-card>
       <template #header>
         <div class="header-content">
-          <span>用户角色管理</span>
+          <span>用户列表</span>
           <div class="controls">
             <el-button 
               type="success" 
@@ -112,11 +113,17 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import request from '../../utils/request'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
+const router = useRouter()
 const users = ref([])
+
+const goBack = () => {
+  router.back()
+}
 const allRoles = ref([])
 const assignDialogVisible = ref(false)
 const currentUser = ref(null)

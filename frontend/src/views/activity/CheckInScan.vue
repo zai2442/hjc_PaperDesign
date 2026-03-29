@@ -1,5 +1,6 @@
 <template>
   <div class="checkin-scan-container">
+    <el-page-header @back="() => router.back()" content="扫码签到" style="position: absolute; top: 20px; left: 20px; width: calc(100% - 40px); z-index: 100;" />
     <el-card class="scan-result-card">
       <div v-if="loading" class="state-loading">
         <el-icon class="is-loading" size="60" color="#409EFF"><Loading /></el-icon>

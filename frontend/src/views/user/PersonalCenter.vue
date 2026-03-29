@@ -304,6 +304,8 @@ const loadProfile = async () => {
         ROLE_STUDENT: '学生'
       }
       roleName.value = nameMap[u.roles[0].roleCode] || u.roles[0].roleName
+    } else {
+      roleName.value = '无权限'
     }
   } catch (e) {
     ElMessage.error('获取用户信息失败')
@@ -365,9 +367,13 @@ const submitPassword = async () => {
       newPassword: passwordForm.newPassword
     })
     ElMessage.success('密码修改成功，请重新登录')
-    passwordForm.oldPassword = ''
-    passwordForm.newPassword = ''
-    passwordForm.confirmPassword = ''
+    // Force logout
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    localStorage.removeItem('user_role')
+    setTimeout(() => {
+      router.push('/login')
+    }, 1500)
   } catch (e) {
     ElMessage.error(e.response?.data?.message || '密码修改失败，请检查原密码')
   } finally {

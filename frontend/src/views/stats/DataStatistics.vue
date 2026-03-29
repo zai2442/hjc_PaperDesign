@@ -1,5 +1,6 @@
 <template>
   <div class="stats-container">
+    <el-page-header content="数据统计概览" style="margin-bottom: 20px" @back="goBack" />
     <el-row :gutter="20" class="overview-cards">
       <el-col :span="6">
         <el-card shadow="hover" class="stat-card">
@@ -130,6 +131,10 @@ import { getStatsOverview, getActivityTrends, getParticipationRanking } from '..
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+
+const goBack = () => {
+  router.back()
+}
 const overview = ref({
   totalActivities: 0,
   totalRegistrations: 0,

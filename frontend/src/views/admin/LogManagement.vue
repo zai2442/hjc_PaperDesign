@@ -1,7 +1,8 @@
 <template>
   <div class="log-container">
+    <el-page-header content="系统操作日志" style="margin-bottom: 20px" @back="goBack" />
     <div class="header">
-      <h2 class="title">系统操作日志</h2>
+      <h2 class="title">日志列表</h2>
       <el-alert
         v-if="newLogAvailable"
         title="有新日志产生"
@@ -22,14 +23,23 @@
           <el-select
             v-model="queryForm.opTypes"
             multiple
-            placeholder="请选择"
-            style="width: 240px"
+            placeholder="全部"
+            style="width: 300px"
+            collapse-tags
+            collapse-tags-tooltip
             @change="handleSearch"
           >
+            <el-option label="活动创建" value="CREATE" />
+            <el-option label="活动更新" value="UPDATE" />
+            <el-option label="活动删除" value="DELETE" />
             <el-option label="活动下线" value="OFFLINE" />
-            <el-option label="白名单添加" value="WHITELIST_ADD" />
-            <el-option label="白名单删除" value="WHITELIST_REMOVE" />
-            <el-option label="删除记录" value="DELETE" />
+            <el-option label="审核通过" value="APPROVE" />
+            <el-option label="审核驳回" value="REJECT" />
+            <el-option label="提交报名" value="REGISTER" />
+            <el-option label="取消报名" value="CANCEL_REGISTRATION" />
+            <el-option label="报名审核" value="AUDIT_REGISTRATION" />
+            <el-option label="增加白名单" value="WHITELIST_ADD" />
+            <el-option label="移除白名单" value="WHITELIST_REMOVE" />
           </el-select>
         </el-form-item>
 
@@ -154,12 +164,17 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { getLogs } from '../../api/log'
 import { ElMessage } from 'element-plus'
 
+const router = useRouter()
 const route = useRoute()
+
+const goBack = () => {
+  router.back()
+}
 const loading = ref(false)
 const logs = ref([])
 const total = ref(0)
@@ -271,20 +286,39 @@ const handleCurrentChange = (val) => {
 
 const getOpTypeLabel = (type) => {
   const map = {
+    'CREATE': '活动创建',
+    'UPDATE': '活动更新',
+    'DELETE': '删除记录',
     'OFFLINE': '活动下线',
+    'APPROVE': '活动审核通过',
+    'REJECT': '活动审核驳回',
+    'WITHDRAW': '撤销申请',
+    'SUBMIT_REVIEW': '提交审核',
+    'REVOKE_SCHEDULE': '撤销发布计划',
     'WHITELIST_ADD': '白名单添加',
     'WHITELIST_REMOVE': '白名单删除',
-    'DELETE': '删除记录'
+    'REGISTER': '提交报名',
+    'CANCEL_REGISTRATION': '取消报名',
+    'AUDIT_REGISTRATION': '报名审核',
+    'VARIANT_CREATE': '变体创建',
+    'ACTIVATE_VARIANT': '激活变体',
+    'ROLLBACK': '版本回滚'
   }
   return map[type] || type
 }
 
 const getOpTypeTag = (type) => {
   const map = {
+    'CREATE': 'success',
+    'UPDATE': 'primary',
+    'DELETE': 'danger',
     'OFFLINE': 'warning',
-    'WHITELIST_ADD': 'success',
-    'WHITELIST_REMOVE': 'info',
-    'DELETE': 'danger'
+    'APPROVE': 'success',
+    'REJECT': 'danger',
+    'WITHDRAW': 'info',
+    'REGISTER': 'success',
+    'CANCEL_REGISTRATION': 'info',
+    'AUDIT_REGISTRATION': 'primary'
   }
   return map[type] || ''
 }

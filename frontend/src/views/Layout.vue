@@ -78,7 +78,7 @@ const router = useRouter()
 
 const activeMenu = computed(() => route.path)
 const username = ref(localStorage.getItem('username') || '用户')
-const userRole = computed(() => localStorage.getItem('user_role') || 'ROLE_STUDENT')
+const userRole = computed(() => localStorage.getItem('user_role') || 'ROLE_NONE')
 const canManageRegistrations = computed(() => ['ROLE_SUPER_ADMIN', 'ROLE_COUNSELOR', 'ROLE_CLUB_OWNER'].includes(userRole.value))
 
 const fetchUserInfo = async () => {
@@ -89,6 +89,8 @@ const fetchUserInfo = async () => {
       localStorage.setItem('username', res.data.username)
       if (res.data.roles && res.data.roles.length > 0) {
         localStorage.setItem('user_role', res.data.roles[0].roleCode)
+      } else {
+        localStorage.setItem('user_role', 'ROLE_NONE')
       }
       window.location.reload()
     } catch (err) {

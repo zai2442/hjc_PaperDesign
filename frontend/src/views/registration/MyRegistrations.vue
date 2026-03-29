@@ -1,5 +1,6 @@
 <template>
   <div class="my-registrations">
+    <el-page-header content="我的报名" style="margin-bottom: 20px" @back="goBack" />
     <el-card class="filter-card">
       <el-form :inline="true" :model="queryForm">
         <el-form-item label="状态">
@@ -89,9 +90,15 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { cancelRegistration, getMyRegistrations, getRegistrationDetail } from '../../api/registration'
 
+const router = useRouter()
+
+const goBack = () => {
+  router.back()
+}
 const loading = ref(false)
 const rows = ref([])
 const total = ref(0)

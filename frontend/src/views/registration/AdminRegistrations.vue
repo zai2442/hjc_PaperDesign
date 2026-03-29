@@ -1,5 +1,6 @@
 <template>
   <div class="admin-registrations">
+    <el-page-header content="报名管理" style="margin-bottom: 20px" @back="goBack" />
     <el-card class="filter-card">
       <el-form :inline="true" :model="queryForm">
         <el-form-item label="活动">
@@ -157,6 +158,10 @@ import { auditRegistration, getAdminRegistrations, getRegistrationDetail, getReg
 
 const route = useRoute()
 const router = useRouter()
+
+const goBack = () => {
+  router.back()
+}
 
 const loading = ref(false)
 const rows = ref([])

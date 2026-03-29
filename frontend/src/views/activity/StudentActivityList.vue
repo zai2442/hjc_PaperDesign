@@ -1,5 +1,6 @@
 <template>
   <div class="student-activity-list">
+    <el-page-header content="活动大厅" style="margin-bottom: 20px" @back="goBack" />
     <el-tabs v-model="filters.statusCategory" @tab-click="onTabClick" class="status-tabs">
       <el-tab-pane label="全部活动" name="" />
       <el-tab-pane label="进行中" name="IN_PROGRESS" />
@@ -178,6 +179,10 @@ const statusTypeMap = {
 }
 
 const router = useRouter()
+
+const goBack = () => {
+  router.back()
+}
 
 const loadData = async () => {
   try {
